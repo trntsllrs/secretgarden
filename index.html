@@ -1,0 +1,1928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#8fa87a">
+<title>The Secret Garden — A Paper Maze</title>
+<style>
+:root{
+  --paper:#f4e9d2;
+  --paper-deep:#e6d6b4;
+  --ink:#4a3f33;
+  --ink-soft:#7a6a55;
+  --moss:#86a85a;
+  --moss-deep:#5d7d46;
+  --rose:#d98a8f;
+  --rose-deep:#b5646c;
+  --gold:#e0b768;
+  --plum:#7b5570;
+  --sky:#a9cbd8;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#2f3a2e}
+body{
+  font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+  color:var(--ink);
+  touch-action:none;
+  user-select:none;
+}
+#stage{position:fixed;inset:0}
+canvas#game{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+/* ---------- paper frame + vignette ---------- */
+#vignette{
+  position:absolute;inset:0;pointer-events:none;
+  box-shadow:inset 0 0 180px rgba(74,63,51,.42), inset 0 0 60px rgba(74,63,51,.18);
+}
+#edge{
+  position:absolute;inset:0;pointer-events:none;
+  border:10px solid transparent;
+  border-image:linear-gradient(160deg,#f7eed8,#e2d0ab 40%,#f7eed8 60%,#d9c69f) 1;
+  mix-blend-mode:normal;opacity:.55;
+}
+
+/* ---------- generic paper card ---------- */
+.card{
+  position:absolute;
+  background:linear-gradient(158deg,#faf2df 0%,#f0e3c6 60%,#e7d7b5 100%);
+  border-radius:3px;
+  box-shadow:0 6px 0 rgba(60,72,54,.16), 0 10px 22px rgba(35,44,32,.32);
+  padding:10px 13px;
+}
+.card::after{
+  content:"";position:absolute;inset:0;border-radius:3px;pointer-events:none;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7), inset 0 -2px 0 rgba(120,100,70,.14);
+}
+.eyebrow{
+  font-size:9px;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--ink-soft);margin:0 0 5px;font-weight:600;
+}
+
+/* ---------- HUD ---------- */
+#hud{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#vitals{top:14px;left:14px;transform:rotate(-.7deg);min-width:186px}
+#hearts{display:flex;gap:4px;margin-bottom:7px}
+#hearts svg{width:19px;height:19px;display:block;filter:drop-shadow(0 1px 0 rgba(120,90,70,.35))}
+.meter{
+  height:9px;border-radius:5px;background:#d8c7a3;
+  box-shadow:inset 0 1px 2px rgba(90,74,52,.35);overflow:hidden;position:relative;
+}
+.meter > i{display:block;height:100%;width:50%;border-radius:5px;transition:width .18s ease-out}
+#manaFill{background:linear-gradient(90deg,#9fc0d6,#c3dbe6)}
+.row{display:flex;align-items:center;gap:8px;margin-top:6px}
+.row .lab{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft);width:44px}
+.row .meter{flex:1}
+#herbs{display:flex;align-items:center;gap:6px;margin-top:9px;font-size:12px;letter-spacing:.06em;color:var(--ink)}
+#herbs b{font-weight:600}
+#herbs .sprig{width:15px;height:15px;display:block}
+
+/* ---------- minimap ---------- */
+#mapCard{top:14px;right:14px;transform:rotate(.8deg);padding:9px 9px 7px}
+#minimap{display:block;width:132px;height:132px;background:#e8dcbe;border-radius:2px;
+  box-shadow:inset 0 0 0 1px rgba(120,100,70,.25)}
+#mapLabel{margin-top:6px;text-align:center;font-size:8.5px;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--ink-soft)}
+
+/* ---------- whisper ribbon ---------- */
+#whisper{
+  position:absolute;left:50%;bottom:74px;transform:translateX(-50%) rotate(-.3deg);
+  max-width:min(560px,86vw);text-align:center;
+  font-size:15px;line-height:1.45;font-style:italic;color:var(--ink);
+  background:linear-gradient(160deg,rgba(250,242,223,.96),rgba(233,219,190,.94));
+  padding:9px 22px;border-radius:2px;opacity:0;transition:opacity .5s ease;
+  box-shadow:0 4px 0 rgba(60,72,54,.14),0 8px 18px rgba(35,44,32,.26);
+}
+#whisper.show{opacity:1}
+
+/* ---------- toasts ---------- */
+#toasts{position:absolute;left:14px;bottom:14px;display:flex;flex-direction:column-reverse;gap:6px}
+.toast{
+  font-size:12px;letter-spacing:.04em;color:var(--ink);
+  background:rgba(250,242,223,.94);padding:6px 12px;border-radius:2px;
+  box-shadow:0 3px 0 rgba(60,72,54,.14);
+  border-left:3px solid var(--moss);
+  animation:toastIn .35s ease both;
+}
+.toast.rose{border-left-color:var(--rose)}
+.toast.gold{border-left-color:var(--gold)}
+@keyframes toastIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ---------- hint ---------- */
+#hint{position:absolute;right:14px;bottom:14px;text-align:right;
+  font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:rgba(244,233,210,.62);
+  text-shadow:0 1px 2px rgba(30,38,28,.55);line-height:1.7}
+
+/* ---------- overlays ---------- */
+.overlay{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 40%,rgba(52,64,48,.55),rgba(30,38,28,.86));
+  backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
+  padding:22px;text-align:center;z-index:5;
+}
+.overlay[hidden]{display:none}
+.plate{
+  max-width:min(640px,92vw);
+  background:linear-gradient(158deg,#faf2df,#efe1c2 55%,#e3d1ac);
+  padding:34px 34px 28px;border-radius:4px;position:relative;
+  box-shadow:0 10px 0 rgba(40,50,36,.28),0 26px 60px rgba(20,26,18,.5);
+}
+.plate::before{
+  content:"";position:absolute;inset:9px;border:1px solid rgba(122,106,85,.34);
+  border-radius:2px;pointer-events:none;
+}
+.kicker{font-size:10px;letter-spacing:.42em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 14px}
+h1{
+  margin:0;font-weight:400;line-height:.94;
+  font-size:clamp(30px,6.6vw,54px);letter-spacing:.03em;color:#3f382c;
+}
+h1 .sm{display:block;font-size:.44em;letter-spacing:.32em;text-transform:uppercase;
+  color:var(--moss-deep);margin-top:14px}
+.lede{margin:18px auto 0;max-width:44ch;font-size:15px;line-height:1.62;color:#5b5040;font-style:italic}
+.keys{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;margin:20px auto 0;max-width:44ch}
+.keys div{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.keys b{display:inline-block;background:#e5d5b1;border-radius:3px;padding:2px 7px;margin-right:6px;
+  color:#4a3f33;font-weight:600;box-shadow:inset 0 -2px 0 rgba(120,100,70,.22)}
+button.play{
+  margin-top:24px;font-family:inherit;font-size:12px;letter-spacing:.26em;text-transform:uppercase;
+  padding:13px 34px;border:0;border-radius:3px;cursor:pointer;color:#f6efdd;
+  background:linear-gradient(#7d9c55,#5d7d46);
+  box-shadow:0 4px 0 #45602f,0 10px 18px rgba(30,40,26,.4);
+  transition:transform .12s ease,box-shadow .12s ease;
+}
+button.play:hover{transform:translateY(-1px);box-shadow:0 5px 0 #45602f,0 12px 20px rgba(30,40,26,.44)}
+button.play:active{transform:translateY(3px);box-shadow:0 1px 0 #45602f}
+button.play:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.sig{margin-top:18px;font-size:9px;letter-spacing:.3em;text-transform:uppercase;color:#9c8b6e}
+
+/* ---------- touch controls ---------- */
+#touch{position:absolute;inset:0;display:none;z-index:3}
+#touch.on{display:block}
+#stickBase{position:absolute;width:112px;height:112px;border-radius:50%;
+  background:rgba(244,233,210,.14);box-shadow:inset 0 0 0 2px rgba(244,233,210,.3);
+  transform:translate(-50%,-50%);pointer-events:none;opacity:0;transition:opacity .18s}
+#stickNub{position:absolute;width:50px;height:50px;border-radius:50%;
+  background:rgba(244,233,210,.42);transform:translate(-50%,-50%);pointer-events:none;opacity:0;transition:opacity .18s}
+#stickBase.on,#stickNub.on{opacity:1}
+#tapCast{position:absolute;right:20px;bottom:26px;width:88px;height:88px;border-radius:50%;
+  background:radial-gradient(circle at 38% 34%,rgba(244,233,210,.34),rgba(224,183,104,.26));
+  box-shadow:inset 0 0 0 2px rgba(244,233,210,.34);
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:rgba(250,242,223,.86)}
+#tapRobin{position:absolute;right:38px;bottom:130px;width:56px;height:56px;border-radius:50%;
+  background:rgba(217,138,143,.28);box-shadow:inset 0 0 0 2px rgba(244,233,210,.3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:rgba(250,242,223,.86)}
+
+@media (max-width:620px){
+  #vitals{min-width:150px;padding:8px 10px}
+  #hearts svg{width:16px;height:16px}
+  #minimap{width:98px;height:98px}
+  #hint{display:none}
+  #whisper{bottom:150px;font-size:13px}
+}
+@media (prefers-reduced-motion:reduce){
+  .toast{animation:none}
+}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div class="card" id="vitals">
+      <p class="eyebrow">Mary Lennox</p>
+      <div id="hearts"></div>
+      <div class="row"><span class="lab">Wand</span><div class="meter"><i id="manaFill"></i></div></div>
+      <div id="herbs">
+        <svg class="sprig" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 22V6" stroke="#5d7d46" stroke-width="2" fill="none"/>
+          <path d="M12 12c-5 0-7-3-7-6 3 0 7 2 7 6z" fill="#86a85a"/>
+          <path d="M12 16c5 0 7-3 7-6-3 0-7 2-7 6z" fill="#9dbf72"/>
+        </svg>
+        <span>Herbology <b id="herbCount">0</b></span>
+      </div>
+    </div>
+
+    <div class="card" id="mapCard">
+      <canvas id="minimap" width="264" height="264"></canvas>
+      <div id="mapLabel">The maze remembered</div>
+    </div>
+
+    <div id="whisper"></div>
+    <div id="toasts"></div>
+    <div id="hint">
+      WASD / Arrows — walk<br>
+      Click or Space — wand<br>
+      R — send the robin<br>
+      P — pause
+    </div>
+  </div>
+
+  <div id="touch">
+    <div id="stickBase"></div>
+    <div id="stickNub"></div>
+    <div id="tapCast">Wand</div>
+    <div id="tapRobin">Robin</div>
+  </div>
+
+  <div id="vignette"></div>
+  <div id="edge"></div>
+
+  <div class="overlay" id="titleScreen">
+    <div class="plate">
+      <p class="kicker">Chapter One</p>
+      <h1>The Secret Garden<span class="sm">A Paper Maze</span></h1>
+      <p class="lede" id="titleLede">Ten thousand hedges deep, someone is waiting. Mary has a wand, a stablehand, and no idea which way is in.</p>
+      <div class="keys">
+        <div><b>WASD</b>Walk</div>
+        <div><b>Click</b>Wand</div>
+        <div><b>R</b>Robin</div>
+        <div><b>P</b>Pause</div>
+      </div>
+      <button class="play" id="startBtn">Enter the maze</button>
+      <p class="sig">Dickon follows · the hedges move · mind the brambles</p>
+    </div>
+  </div>
+
+  <div class="overlay" id="endScreen" hidden>
+    <div class="plate">
+      <p class="kicker" id="endKicker">The Last Page</p>
+      <h1 id="endTitle">Found</h1>
+      <p class="lede" id="endText"></p>
+      <button class="play" id="againBtn">Begin again</button>
+      <p class="sig" id="endStats"></p>
+    </div>
+  </div>
+
+  <div class="overlay" id="pauseScreen" hidden>
+    <div class="plate">
+      <p class="kicker">A held breath</p>
+      <h1>Paused</h1>
+      <p class="lede">The hedges wait, but not patiently.</p>
+      <button class="play" id="resumeBtn">Keep going</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================================
+   THE SECRET GARDEN — A PAPER MAZE
+   Single file. Vanilla JS. No external assets. Every texture, every leaf and
+   every scrap of paper in here is generated at runtime on an offscreen canvas.
+   ========================================================================== */
+
+/* ---------------------------------------------------------------- constants */
+const TILE   = 78;          // world units per maze cell
+const SQUASH = 0.74;        // oblique camera: how flat the ground reads
+const TH     = TILE*SQUASH; // a cell's on-screen height
+const WALL_H = 66;          // hedge height in screen px
+const COLS   = 45, ROWS = 45;   // must be odd
+const PAD    = 16;          // sprite bleed
+
+/* ------------------------------------------------------------------ palette */
+const P = {
+  ground:   ['#c3d78e','#b8ce84','#cadd97','#aec47a'],
+  groundDk: '#9db56c',
+  path:     '#ded0a6',
+  hedgeTop: ['#a8c97c','#98bb6c','#8aae60','#b4d189'],
+  hedgeSide:['#6f9153','#638347','#587a41'],
+  hedgeLit: '#c3daa0',
+  bloom:    ['#f2dcea','#fbe9e6','#f7efd6','#e8d4ec'],
+  shade:    'rgba(96,118,104,.26)',
+  paper:    '#f4e9d2',
+  ink:      '#4a3f33',
+  rose:     '#d98a8f',
+  roseDk:   '#b5646c',
+  gold:     '#e0b768',
+  plum:     '#7b5570',
+  rust:     '#c1734b',
+  bark:     '#a07954',
+  barkDk:   '#7d5c3f',
+  stone:    '#ded3bc',
+  stoneDk:  '#bdb096',
+  thorn:    '#5c6b40',
+  sky:      '#a9cbd8'
+};
+
+/* -------------------------------------------------------------------- utils */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const CALM = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const MOTION = CALM ? 0.35 : 1;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const dist2=(ax,ay,bx,by)=>{const dx=bx-ax,dy=by-ay;return dx*dx+dy*dy;};
+const TAU=Math.PI*2;
+function shuffle(arr,rnd){for(let i=arr.length-1;i>0;i--){const j=(rnd()*(i+1))|0;const t=arr[i];arr[i]=arr[j];arr[j]=t;}return arr;}
+function pick(arr,rnd){return arr[(rnd()*arr.length)|0];}
+function shade(hex,amt){
+  const n=parseInt(hex.slice(1),16);
+  let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  r=clamp(Math.round(r+amt),0,255);g=clamp(Math.round(g+amt),0,255);b=clamp(Math.round(b+amt),0,255);
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+function poly(g,pts,fill){
+  g.beginPath();g.moveTo(pts[0],pts[1]);
+  for(let i=2;i<pts.length;i+=2)g.lineTo(pts[i],pts[i+1]);
+  g.closePath();g.fillStyle=fill;g.fill();
+}
+function newCanvas(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c;}
+
+/* --------------------------------------------------------------- the canvas */
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d',{alpha:false});
+let VW=0,VH=0,DPR=1,SCALE=1;
+function resize(){
+  DPR = Math.min(window.devicePixelRatio||1, 2);
+  VW = window.innerWidth; VH = window.innerHeight;
+  cv.width = Math.round(VW*DPR); cv.height = Math.round(VH*DPR);
+  // show roughly 11 cells across, never so zoomed the diorama loses its scale
+  SCALE = clamp(Math.min(VW/(11.2*TILE), VH/(7.4*TH)), 0.62, 2.1);
+}
+window.addEventListener('resize',resize);
+resize();
+
+/* ==========================================================================
+   TEXTURE FOUNDRY — everything below bakes once into offscreen canvases
+   ========================================================================== */
+
+/* paper grain: soft fibrous noise laid over the whole frame */
+const grainTex=(function(){
+  const S=220,c=newCanvas(S,S),g=c.getContext('2d');
+  const img=g.createImageData(S,S),d=img.data;
+  for(let i=0;i<d.length;i+=4){
+    const v=Math.random();
+    d[i]=d[i+1]=d[i+2]=0;
+    d[i+3]=v<0.5?0:Math.round((v-0.5)*46);
+  }
+  g.putImageData(img,0,0);
+  // fibres
+  g.globalAlpha=.05;
+  for(let i=0;i<70;i++){
+    g.strokeStyle=Math.random()<.5?'#000':'#fff';
+    g.lineWidth=Math.random()*1.4+.3;
+    const x=Math.random()*S,y=Math.random()*S,len=20+Math.random()*70,a=Math.random()*TAU;
+    g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.cos(a)*len,y+Math.sin(a)*len);g.stroke();
+  }
+  return c;
+})();
+
+/* the meadow: layered paper cut-outs of green, mown in soft bands */
+const groundTex=(function(){
+  const S=512,c=newCanvas(S,S),g=c.getContext('2d');
+  const rnd=mulberry32(7331);
+  g.fillStyle=P.ground[0];g.fillRect(0,0,S,S);
+  // mown bands
+  for(let y=0;y<S;y+=26){
+    g.globalAlpha=.30;
+    g.fillStyle=(y/26)%2?P.ground[2]:P.ground[1];
+    g.fillRect(0,y,S,26);
+  }
+  g.globalAlpha=1;
+  // torn colour patches
+  for(let i=0;i<58;i++){
+    const cx=rnd()*S,cy=rnd()*S,r=24+rnd()*72,n=7+((rnd()*4)|0),pts=[];
+    for(let k=0;k<n;k++){const a=k/n*TAU,rr=r*(.62+rnd()*.5);pts.push(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr*.8);}
+    g.globalAlpha=.22+rnd()*.2;
+    poly(g,pts,pick(P.ground,rnd));
+  }
+  g.globalAlpha=1;
+  // grass ticks
+  for(let i=0;i<1500;i++){
+    const x=rnd()*S,y=rnd()*S,h=2+rnd()*4;
+    g.strokeStyle=rnd()<.5?P.groundDk:shade(P.ground[3],16);
+    g.globalAlpha=.28+rnd()*.3;g.lineWidth=1;
+    g.beginPath();g.moveTo(x,y);g.lineTo(x+(rnd()-.5)*2,y-h);g.stroke();
+  }
+  g.globalAlpha=1;
+  return c;
+})();
+const groundPat=ctx.createPattern(groundTex,'repeat');
+
+/* ------------------------------------------------------------ hedge sprites */
+/* Each hedge cell is a little paper prism: a lit top face, a shadowed front
+   face, and a crown of folded-triangle foliage. Baked once per variant, then
+   rotated a hair each frame so the whole maze breathes.                       */
+function makeHedge(seed,tall){
+  const rnd=mulberry32(seed);
+  const H=tall?WALL_H+26:WALL_H;
+  const w=TILE+PAD*2, h=H+TH+PAD*2;
+  const c=newCanvas(w,h),g=c.getContext('2d');
+  const bx=PAD, ty=PAD;                 // top face top-left
+  const fy=PAD+TH;                      // front face top edge
+  const by=PAD+TH+H;                    // ground line
+  const j=()=>(rnd()-.5)*5;
+
+  // front face (bleed 3px each side so neighbours knit together)
+  poly(g,[bx-3,fy, bx+TILE+3,fy, bx+TILE+3,by+j(), bx-3,by+j()], pick(P.hedgeSide,rnd));
+  // vertical paper creases
+  g.globalAlpha=.16;
+  for(let i=0;i<4;i++){
+    const x=bx+8+rnd()*(TILE-16);
+    poly(g,[x,fy, x+3+rnd()*5,fy, x+2,by, x-1,by], rnd()<.5?'#3f5b32':'#cfe0a6');
+  }
+  g.globalAlpha=1;
+  // top face
+  poly(g,[bx+j(),ty+j(), bx+TILE+j(),ty+j(), bx+TILE+j(),fy+2, bx+j(),fy+2], pick(P.hedgeTop,rnd));
+  // lit facet on the top-left, the way the sun falls in the reference plate
+  g.globalAlpha=.5;
+  poly(g,[bx+2,ty+3, bx+TILE*.62,ty+1, bx+TILE*.30,fy, bx+1,fy-4], P.hedgeLit);
+  g.globalAlpha=1;
+
+  // foliage: folded triangles crowding the crown
+  const n=tall?26:18;
+  for(let i=0;i<n;i++){
+    const cx=bx+rnd()*TILE, cy=ty-4+rnd()*(TH+16);
+    const s=13+rnd()*22, a=rnd()*TAU;
+    const p=[];
+    for(let k=0;k<3;k++){
+      const ang=a+k/3*TAU+(rnd()-.5)*.7, rr=s*(.6+rnd()*.7);
+      p.push(cx+Math.cos(ang)*rr, cy+Math.sin(ang)*rr*.86);
+    }
+    // each leaf-scrap drops a shadow on the one beneath it
+    g.globalAlpha=.17;
+    poly(g,[p[0]+2,p[1]+3,p[2]+2,p[3]+3,p[4]+2,p[5]+3],'#3f5b32');
+    g.globalAlpha=1;
+    poly(g,p, rnd()<.28?P.hedgeLit:pick(P.hedgeTop,rnd));
+  }
+  // a scatter of tiny blossoms
+  for(let i=0;i<3+((rnd()*4)|0);i++){
+    const cx=bx+6+rnd()*(TILE-12), cy=ty+rnd()*(TH+8), r=2+rnd()*2.4;
+    g.fillStyle=pick(P.bloom,rnd);
+    g.beginPath();
+    for(let k=0;k<5;k++){const a=k/5*TAU;g.ellipse(cx+Math.cos(a)*r,cy+Math.sin(a)*r*.8,r*.8,r*.66,a,0,TAU);}
+    g.fill();
+  }
+  c.anchorX = PAD+TILE/2;
+  c.anchorY = by;
+  return c;
+}
+const HEDGES = [];
+for(let i=0;i<8;i++) HEDGES.push(makeHedge(1000+i*77,false));
+const TALL_HEDGES = [];
+for(let i=0;i<4;i++) TALL_HEDGES.push(makeHedge(4000+i*131,true));
+
+/* ------------------------------------------------------------- tree sprites */
+function makeTree(seed){
+  const rnd=mulberry32(seed);
+  const H=150+rnd()*70, w=140, h=H+70;
+  const c=newCanvas(w,h),g=c.getContext('2d');
+  const cx=w/2, base=h-14;
+  // trunk
+  poly(g,[cx-7,base, cx+7,base, cx+4,base-H*.55, cx-4,base-H*.55], P.barkDk);
+  poly(g,[cx-7,base, cx-1,base, cx-1,base-H*.55, cx-4,base-H*.55], P.bark);
+  // conical canopy of folded paper, dark to light going up
+  const tiers=6;
+  for(let t=0;t<tiers;t++){
+    const ty=base-H*.42-t*(H*.11);
+    const rad=(54-t*7)*(0.9+rnd()*0.2);
+    const dark=shade('#7ea25b',-14-t*2), lite=shade('#a3c477', t*4);
+    for(let k=0;k<7;k++){
+      const a=(k/7)*TAU+rnd()*.4;
+      const x=cx+Math.cos(a)*rad*.6, y=ty+Math.sin(a)*rad*.22;
+      poly(g,[x,y-rad*.55, x-rad*.42,y+rad*.34, x+rad*.42,y+rad*.34], (k%3===0)?lite:dark);
+    }
+    poly(g,[cx,ty-rad*.8, cx-rad*.5,ty+rad*.3, cx+rad*.5,ty+rad*.3], shade('#93b76a',t*3));
+  }
+  c.anchorX=cx; c.anchorY=base;
+  return c;
+}
+const TREES=[]; for(let i=0;i<5;i++) TREES.push(makeTree(9000+i*211));
+
+/* ------------------------------------------------------------ flower sprite */
+function makeFlower(seed){
+  const rnd=mulberry32(seed);
+  const w=30,h=40,c=newCanvas(w,h),g=c.getContext('2d');
+  const cx=w/2, base=h-3;
+  g.strokeStyle='#6f9153';g.lineWidth=1.6;
+  g.beginPath();g.moveTo(cx,base);g.quadraticCurveTo(cx+(rnd()-.5)*7,base-11,cx,base-19);g.stroke();
+  poly(g,[cx,base-12, cx-8,base-16, cx-2,base-8],'#86a85a');
+  const petal=pick(['#f0c2cf','#f6dfa6','#e7cbe6','#fbf0dc','#f2a8a8','#cfe0f0'],rnd);
+  const n=5+((rnd()*3)|0), r=5+rnd()*3.4;
+  for(let k=0;k<n;k++){
+    const a=k/n*TAU;
+    poly(g,[cx,base-20, cx+Math.cos(a)*r-2,base-20+Math.sin(a)*r*.9, cx+Math.cos(a+.7)*r+1,base-20+Math.sin(a+.7)*r*.9], k%2?petal:shade(petal,10));
+  }
+  g.fillStyle=P.gold;g.beginPath();g.arc(cx,base-20,2.1,0,TAU);g.fill();
+  c.anchorX=cx;c.anchorY=base;
+  return c;
+}
+const FLOWERS=[]; for(let i=0;i<10;i++) FLOWERS.push(makeFlower(2200+i*97));
+
+/* -------------------------------------------------------------- stone / urn */
+function makeStone(seed){
+  const rnd=mulberry32(seed);
+  const w=64,h=54,c=newCanvas(w,h),g=c.getContext('2d');
+  const cx=w/2,base=h-6,r=15+rnd()*8;
+  const pts=[],n=7;
+  for(let k=0;k<n;k++){const a=k/n*TAU,rr=r*(.7+rnd()*.6);pts.push(cx+Math.cos(a)*rr, base-14+Math.sin(a)*rr*.7);}
+  poly(g,pts,P.stoneDk);
+  const p2=pts.map((v,i)=>i%2?v-4:v-2);
+  poly(g,p2,P.stone);
+  c.anchorX=cx;c.anchorY=base;
+  return c;
+}
+const STONES=[]; for(let i=0;i<4;i++) STONES.push(makeStone(5500+i*61));
+
+/* ==========================================================================
+   THE MAZE
+   ========================================================================== */
+const CX=(COLS-1)>>1, CY=(ROWS-1)>>1;   // heart of the garden
+const idx=(x,y)=>y*COLS+x;
+
+const G = {
+  grid:new Uint8Array(COLS*ROWS),
+  gates:[],
+  gateAt:new Map(),
+  dist:new Int32Array(COLS*ROWS),
+  seen:new Uint8Array(COLS*ROWS),
+  open:[]
+};
+
+function cellSolid(x,y){
+  if(x<0||y<0||x>=COLS||y>=ROWS) return true;
+  if(G.grid[idx(x,y)]===1) return true;
+  const g=G.gateAt.get(idx(x,y));
+  return g ? g.amt>0.45 : false;
+}
+function worldSolid(wx,wy){ return cellSolid(Math.floor(wx/TILE), Math.floor(wy/TILE)); }
+
+function generateMaze(rnd){
+  const g=G.grid; g.fill(1);
+  const stack=[[1,1]]; g[idx(1,1)]=0;
+  const dirs=[[0,-2],[2,0],[0,2],[-2,0]];
+  while(stack.length){
+    const [x,y]=stack[stack.length-1];
+    const opts=[];
+    for(const [dx,dy] of dirs){
+      const nx=x+dx, ny=y+dy;
+      if(nx>0&&ny>0&&nx<COLS-1&&ny<ROWS-1&&g[idx(nx,ny)]===1) opts.push([nx,ny,x+dx/2,y+dy/2]);
+    }
+    if(!opts.length){ stack.pop(); continue; }
+    const [nx,ny,mx,my]=opts[(rnd()*opts.length)|0];
+    g[idx(mx,my)]=0; g[idx(nx,ny)]=0;
+    stack.push([nx,ny]);
+  }
+
+  /* the walled garden at the heart — keep every original opening in its wall
+     so no corner of the maze is orphaned, then cut two rose arches */
+  const R=5, ring=[];
+  for(let y=CY-R;y<=CY+R;y++) for(let x=CX-R;x<=CX+R;x++){
+    const onRing = (x===CX-R||x===CX+R||y===CY-R||y===CY+R);
+    if(onRing) ring.push([x,y,g[idx(x,y)]]);
+  }
+  for(let y=CY-R;y<=CY+R;y++) for(let x=CX-R;x<=CX+R;x++) g[idx(x,y)]=0;
+  for(const [x,y,v] of ring) g[idx(x,y)]=v;
+  g[idx(CX-1,CY-R)]=0; g[idx(CX-1,CY-R-1)]=0;   // north arch
+  g[idx(CX+1,CY+R)]=0; g[idx(CX+1,CY+R+1)]=0;   // south arch
+
+  /* loops: a perfect maze is a cruel maze. Knock through some walls, and let a
+     handful of those become living hedges that open and close on their own.
+     They only ever sit on redundant loops, so they can never trap you.        */
+  const cand=[];
+  for(let y=1;y<ROWS-1;y++) for(let x=1;x<COLS-1;x++){
+    if(g[idx(x,y)]!==1) continue;
+    if(Math.abs(x-CX)<=R+1 && Math.abs(y-CY)<=R+1) continue;
+    const h = g[idx(x-1,y)]===0 && g[idx(x+1,y)]===0 && g[idx(x,y-1)]===1 && g[idx(x,y+1)]===1;
+    const v = g[idx(x,y-1)]===0 && g[idx(x,y+1)]===0 && g[idx(x-1,y)]===1 && g[idx(x+1,y)]===1;
+    if(h||v) cand.push([x,y]);
+  }
+  shuffle(cand,rnd);
+  const loops=Math.min(cand.length, 78);
+  for(let i=0;i<loops;i++){
+    const [x,y]=cand[i];
+    g[idx(x,y)]=0;
+    if(i<30){
+      const gate={x,y,amt:0,phase:rnd()*14,period:9+rnd()*5,shut:3.4+rnd()*1.6};
+      G.gates.push(gate); G.gateAt.set(idx(x,y),gate);
+    }
+  }
+
+  G.open.length=0;
+  for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++) if(g[idx(x,y)]===0) G.open.push([x,y]);
+}
+
+/* breadth-first flood from the heart: powers the robin and the compass */
+function floodFromHeart(){
+  G.dist.fill(-1);
+  const q=[idx(CX,CY)]; G.dist[q[0]]=0;
+  for(let h=0;h<q.length;h++){
+    const c=q[h], x=c%COLS, y=(c/COLS)|0, d=G.dist[c];
+    const nb=[[x+1,y],[x-1,y],[x,y+1],[x,y-1]];
+    for(const [nx,ny] of nb){
+      if(nx<0||ny<0||nx>=COLS||ny>=ROWS) continue;
+      const n=idx(nx,ny);
+      if(G.grid[n]!==0||G.dist[n]!==-1) continue;
+      G.dist[n]=d+1; q.push(n);
+    }
+  }
+}
+
+/* ==========================================================================
+   ENTITIES
+   ========================================================================== */
+const ENEMY_KIND={
+  bramble : {hp:32, spd:66,  r:17, dmg:12, sight:360, col:'#8d5a45', col2:'#a86b4f'},
+  thorn   : {hp:54, spd:0,   r:20, dmg:17, sight:158, col:'#5c6b40', col2:'#7b8a4e'},
+  rook    : {hp:24, spd:112, r:15, dmg:14, sight:430, col:'#4d4453', col2:'#6b5f74', fly:true},
+  puff    : {hp:28, spd:42,  r:16, dmg:10, sight:340, col:'#8f7ba0', col2:'#b09cbe'}
+};
+
+function makeEnemy(kind,x,y,rnd){
+  const k=ENEMY_KIND[kind];
+  return {kind,x,y,vx:0,vy:0,hp:k.hp,max:k.hp,r:k.r,fly:!!k.fly,
+    t:rnd()*10,flash:0,cool:rnd()*2,wind:rnd()*TAU,tell:0,knock:0,dead:false,
+    ax:x,ay:y,seed:(rnd()*1e6)|0};
+}
+
+const S = {
+  rnd:null, t:0, elapsed:0, shake:0, running:false, over:false, won:false,
+  player:null, buddy:null,
+  enemies:[], shots:[], pickups:[], parts:[], petals:[], birds:[], floats:[],
+  flowers:[], trees:[], stones:[],
+  robin:null, robinCd:0, whisperT:0, whisperIdx:0,
+  herbs:0, kills:0, potions:0, hurtCool:0, camX:0, camY:0
+};
+
+function buildWorld(seed){
+  const rnd=mulberry32(seed); S.rnd=rnd;
+  G.gates.length=0; G.gateAt.clear(); G.seen.fill(0);
+  generateMaze(rnd);
+  floodFromHeart();
+
+  S.enemies.length=0; S.shots.length=0; S.pickups.length=0;
+  S.parts.length=0; S.petals.length=0; S.birds.length=0; S.floats.length=0;
+  S.flowers.length=0; S.trees.length=0; S.stones.length=0;
+  S.herbs=0; S.kills=0; S.potions=0; S.elapsed=0; S.robin=null; S.robinCd=0;
+  S.whisperT=2.2; S.whisperIdx=0; S.over=false; S.won=false;
+
+  /* ---- Mary and Dickon start at the far corner ---- */
+  const sx=1.5*TILE, sy=1.5*TILE;
+  S.player={x:sx,y:sy,vx:0,vy:0,r:15,hp:100,max:100,mana:100,manaMax:100,
+    face:1,walk:0,cast:0,invuln:0,aim:0,manaHold:0};
+  S.buddy={x:sx-26,y:sy+16,r:14,face:1,walk:0,cast:0,cool:1.2,trail:[]};
+
+  /* ---- flowers, stones, trees ---- */
+  for(const [cx,cy] of G.open){
+    const inHeart = Math.abs(cx-CX)<=4 && Math.abs(cy-CY)<=4;
+    const n = inHeart ? 4 : (rnd()<0.5 ? 1+((rnd()*3)|0) : 0);
+    for(let i=0;i<n;i++){
+      S.flowers.push({
+        x:cx*TILE+8+rnd()*(TILE-16), y:cy*TILE+8+rnd()*(TILE-16),
+        s:FLOWERS[(rnd()*FLOWERS.length)|0], grow:inHeart?1:0, ph:rnd()*TAU
+      });
+    }
+    if(rnd()<0.035) S.stones.push({x:cx*TILE+TILE/2+(rnd()-.5)*20,y:cy*TILE+TILE/2+(rnd()-.5)*16,s:STONES[(rnd()*STONES.length)|0]});
+  }
+  /* four old trees lean over the walled garden itself */
+  for(const [ox,oy] of [[-4.2,-4.2],[4.2,-4.0],[-4.4,3.9],[4.3,4.2]]){
+    S.trees.push({x:(CX+ox)*TILE+TILE/2, y:(CY+oy)*TILE+TILE/2,
+      s:TREES[((ox+oy+9)|0)%TREES.length], ph:Math.random()*TAU});
+  }
+  /* a forest framing the whole diorama */
+  for(let i=0;i<340;i++){
+    const side=(rnd()*4)|0; let x,y;
+    const band=3+rnd()*7;
+    if(side===0){x=rnd()*COLS; y=-band;} else if(side===1){x=rnd()*COLS; y=ROWS+band;}
+    else if(side===2){x=-band; y=rnd()*ROWS;} else {x=COLS+band; y=rnd()*ROWS;}
+    S.trees.push({x:x*TILE,y:y*TILE,s:TREES[(rnd()*TREES.length)|0],ph:rnd()*TAU});
+  }
+
+  /* ---- the garden's unwelcome tenants ---- */
+  const spots=G.open.filter(([x,y])=>{
+    const d=G.dist[idx(x,y)];
+    const fromStart=Math.abs(x-1)+Math.abs(y-1);
+    const inHeart=Math.abs(x-CX)<=5&&Math.abs(y-CY)<=5;
+    return d>=0 && fromStart>9 && !inHeart;
+  });
+  shuffle(spots,rnd);
+  const total=Math.min(spots.length,64);
+  for(let i=0;i<total;i++){
+    const [cx,cy]=spots[i];
+    const near = 1 - clamp(G.dist[idx(cx,cy)]/70,0,1);   // nastier near the heart
+    const roll=rnd();
+    let kind;
+    if(roll < 0.30 + near*0.16) kind='bramble';
+    else if(roll < 0.58 + near*0.10) kind='thorn';
+    else if(roll < 0.82) kind='rook';
+    else kind='puff';
+    S.enemies.push(makeEnemy(kind,cx*TILE+TILE/2,cy*TILE+TILE/2,rnd));
+  }
+  /* guardians of the heart */
+  const guard=[[CX-1,CY-3,'thorn'],[CX+1,CY-3,'thorn'],[CX-3,CY+1,'thorn'],
+               [CX+3,CY+1,'bramble'],[CX-3,CY-1,'rook'],[CX+3,CY-1,'rook'],[CX+1,CY+3,'puff']];
+  for(const [gx,gy,k] of guard) S.enemies.push(makeEnemy(k,gx*TILE+TILE/2,gy*TILE+TILE/2,rnd));
+
+  /* ---- potions and herbs, thickest where the going gets hard ---- */
+  const drops=spots.slice(total).concat(spots.slice(0,total));
+  shuffle(drops,rnd);
+  for(let i=0;i<34 && i<drops.length;i++){
+    const [cx,cy]=drops[i];
+    S.pickups.push({kind: i%3===2 ? 'herb':'potion',
+      x:cx*TILE+TILE/2, y:cy*TILE+TILE/2, ph:rnd()*TAU, got:false});
+  }
+
+  /* ---- Colin, waiting on the stone bench ---- */
+  S.colin={x:CX*TILE+TILE/2, y:CY*TILE+TILE/2+8, ph:0, found:false};
+
+  /* ---- ambient life ---- */
+  for(let i=0;i<26;i++) spawnPetal(true);
+  for(let i=0;i<3;i++) spawnFlock();
+  S.camX=S.player.x; S.camY=S.player.y;
+}
+
+function spawnPetal(anywhere){
+  const r=Math.random;
+  const cx=anywhere?S.player.x+(r()-.5)*1400:S.player.x+(r()-.5)*1600;
+  S.petals.push({x:cx, y:S.player.y+(r()-.5)*900, z:20+r()*70,
+    vx:16+r()*26, vy:(r()-.5)*10, sp:r()*TAU, s:2.4+r()*3.4,
+    col:['#f6dfe6','#fbf1dc','#e8dff0','#f5ded0'][(r()*4)|0], rot:r()*TAU, rv:(r()-.5)*3});
+}
+function spawnFlock(){
+  const r=Math.random;
+  const dir=r()<.5?1:-1;
+  const n=2+((r()*4)|0), y=S.player.y+(r()-.5)*1000;
+  const x=S.player.x - dir*(900+r()*400);
+  for(let i=0;i<n;i++){
+    S.birds.push({x:x-dir*i*38+(r()-.5)*30, y:y+(r()-.5)*70, z:150+r()*90,
+      vx:dir*(150+r()*70), vy:(r()-.5)*16, ph:r()*TAU, sp:9+r()*4, life:16});
+  }
+}
+function burst(x,y,n,cols,pow){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*TAU, sp=(30+Math.random()*pow);
+    S.parts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp*.7,vz:40+Math.random()*90,z:6,
+      life:.6+Math.random()*.8, t:0, rot:Math.random()*TAU, rv:(Math.random()-.5)*11,
+      s:2.6+Math.random()*4.2, col:cols[(Math.random()*cols.length)|0]});
+  }
+}
+function floatText(x,y,txt,col){ S.floats.push({x,y,txt,col,t:0,life:1.1}); }
+
+/* ==========================================================================
+   INPUT — keyboard, mouse, and a thumbstick for the phone
+   ========================================================================== */
+const keys=Object.create(null);
+let mouseX=VW/2, mouseY=VH/2, mouseAim=false, firing=false;
+let touchMode=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+const stick={active:false,id:-1,bx:0,by:0,dx:0,dy:0};
+
+addEventListener('keydown',e=>{
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+  keys[e.key.toLowerCase()]=true;
+  if(e.key===' ') firing=true;
+  if(e.key.toLowerCase()==='r') sendRobin();
+  if(e.key.toLowerCase()==='p') togglePause();
+  if(e.key==='Escape'&&S.running) togglePause();
+});
+addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false; if(e.key===' ')firing=false;});
+cv.addEventListener('mousemove',e=>{mouseX=e.clientX;mouseY=e.clientY;mouseAim=true;});
+cv.addEventListener('mousedown',e=>{if(e.button===0){firing=true;mouseAim=true;}});
+addEventListener('mouseup',()=>{firing=false;});
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+
+const touchEl=document.getElementById('touch');
+const stickBase=document.getElementById('stickBase'), stickNub=document.getElementById('stickNub');
+if(touchMode) touchEl.classList.add('on');
+function tXY(t){return {x:t.clientX,y:t.clientY};}
+touchEl.addEventListener('touchstart',e=>{
+  for(const t of e.changedTouches){
+    const p=tXY(t);
+    if(p.x < VW*0.55 && !stick.active){
+      stick.active=true;stick.id=t.identifier;stick.bx=p.x;stick.by=p.y;stick.dx=0;stick.dy=0;
+      stickBase.style.left=p.x+'px';stickBase.style.top=p.y+'px';
+      stickNub.style.left=p.x+'px';stickNub.style.top=p.y+'px';
+      stickBase.classList.add('on');stickNub.classList.add('on');
+    } else if(p.y < VH-190 || p.x > VW*0.55){
+      if(p.y>VH-200 && p.x>VW-110 && p.y<VH-110) sendRobin();
+      else firing=true;
+    }
+  }
+  e.preventDefault();
+},{passive:false});
+touchEl.addEventListener('touchmove',e=>{
+  for(const t of e.changedTouches){
+    if(t.identifier===stick.id){
+      const p=tXY(t);
+      let dx=p.x-stick.bx, dy=p.y-stick.by;
+      const m=Math.hypot(dx,dy), cap=52;
+      if(m>cap){dx*=cap/m;dy*=cap/m;}
+      stick.dx=dx/cap;stick.dy=dy/cap;
+      stickNub.style.left=(stick.bx+dx)+'px';stickNub.style.top=(stick.by+dy)+'px';
+    }
+  }
+  e.preventDefault();
+},{passive:false});
+function endTouch(e){
+  for(const t of e.changedTouches){
+    if(t.identifier===stick.id){
+      stick.active=false;stick.id=-1;stick.dx=0;stick.dy=0;
+      stickBase.classList.remove('on');stickNub.classList.remove('on');
+    }
+  }
+  firing=false;
+}
+touchEl.addEventListener('touchend',endTouch);
+touchEl.addEventListener('touchcancel',endTouch);
+
+/* ==========================================================================
+   MOVEMENT & COLLISION
+   ========================================================================== */
+function resolve(e,dx,dy){
+  const r=e.r;
+  const x0=Math.floor((e.x-r)/TILE), x1=Math.floor((e.x+r)/TILE);
+  const y0=Math.floor((e.y-r)/TILE), y1=Math.floor((e.y+r)/TILE);
+  for(let cy=y0;cy<=y1;cy++) for(let cx=x0;cx<=x1;cx++){
+    if(!cellSolid(cx,cy)) continue;
+    const L=cx*TILE,T=cy*TILE,R=L+TILE,B=T+TILE;
+    if(e.x+r<=L||e.x-r>=R||e.y+r<=T||e.y-r>=B) continue;
+    if(dx>0) e.x=L-r; else if(dx<0) e.x=R+r;
+    if(dy>0) e.y=T-r; else if(dy<0) e.y=B+r;
+  }
+}
+function moveEnt(e,dx,dy){
+  if(dx){e.x+=dx;resolve(e,dx,0);}
+  if(dy){e.y+=dy;resolve(e,0,dy);}
+}
+/* if a living hedge shuts on top of you, it nudges you out rather than eating you */
+function unstick(e){
+  const cx=Math.floor(e.x/TILE), cy=Math.floor(e.y/TILE);
+  if(!cellSolid(cx,cy)) return;
+  let best=null,bd=1e9;
+  for(let y=cy-2;y<=cy+2;y++) for(let x=cx-2;x<=cx+2;x++){
+    if(cellSolid(x,y)) continue;
+    const tx=x*TILE+TILE/2, ty=y*TILE+TILE/2, d=dist2(e.x,e.y,tx,ty);
+    if(d<bd){bd=d;best=[tx,ty];}
+  }
+  if(best){ e.x=lerp(e.x,best[0],.35); e.y=lerp(e.y,best[1],.35); }
+}
+
+/* ==========================================================================
+   ACTIONS
+   ========================================================================== */
+function screenToWorld(sx,sy){
+  return {x:(sx-VW/2)/SCALE+S.camX, y:(sy-VH/2)/(SCALE*SQUASH)+S.camY};
+}
+function nearestEnemy(x,y,range){
+  let best=null,bd=range*range;
+  for(const e of S.enemies){ if(e.dead)continue;
+    const d=dist2(x,y,e.x,e.y); if(d<bd){bd=d;best=e;} }
+  return best;
+}
+function castSpell(){
+  const p=S.player;
+  if(p.cast>0 || p.mana<12) { if(p.mana<12 && p.cast<=0){p.cast=.16; sfx('empty');} return; }
+  let a;
+  if(mouseAim && !stick.active){ const w=screenToWorld(mouseX,mouseY); a=Math.atan2(w.y-p.y,w.x-p.x); }
+  else { const t=nearestEnemy(p.x,p.y,460);
+         a = t ? Math.atan2(t.y-p.y,t.x-p.x)
+               : Math.atan2(stick.dy||0, stick.dx|| p.face); }
+  p.mana-=12; p.cast=0.22; p.manaHold=0.55; p.aim=a;
+  if(Math.abs(Math.cos(a))>0.2) p.face=Math.cos(a)>0?1:-1;
+  const dmg=17+S.herbs*5;
+  S.shots.push({x:p.x+Math.cos(a)*16,y:p.y+Math.sin(a)*16,
+    vx:Math.cos(a)*540,vy:Math.sin(a)*540,life:.95,dmg,friendly:true,r:8,t:0,hue:'#f4e3a8'});
+  burst(p.x+Math.cos(a)*18,p.y+Math.sin(a)*18,4,['#f6e6b4','#fff6dd'],40);
+  sfx('cast');
+}
+function buddyCast(target){
+  const b=S.buddy;
+  const a=Math.atan2(target.y-b.y,target.x-b.x);
+  b.cast=.3; b.face=Math.cos(a)>0?1:-1;
+  S.shots.push({x:b.x+Math.cos(a)*14,y:b.y+Math.sin(a)*14,
+    vx:Math.cos(a)*470,vy:Math.sin(a)*470,life:.9,dmg:11+S.herbs*2,friendly:true,r:7,t:0,hue:'#bfe0c9'});
+  sfx('cast2');
+}
+function sendRobin(){
+  if(!S.running||S.robinCd>0||S.robin) return;
+  const p=S.player;
+  let cx=Math.floor(p.x/TILE), cy=Math.floor(p.y/TILE);
+  if(G.dist[idx(cx,cy)]<0) return;
+  const path=[[cx,cy]];
+  for(let step=0;step<46;step++){
+    let d=G.dist[idx(cx,cy)];
+    if(d<=0) break;
+    let nx=cx,ny=cy,nd=d;
+    for(const [ax,ay] of [[cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]]){
+      if(ax<0||ay<0||ax>=COLS||ay>=ROWS) continue;
+      const dd=G.dist[idx(ax,ay)];
+      if(dd>=0&&dd<nd){nd=dd;nx=ax;ny=ay;}
+    }
+    if(nx===cx&&ny===cy) break;
+    cx=nx;cy=ny;path.push([cx,cy]);
+  }
+  S.robin={path,i:0,x:p.x,y:p.y,z:60,t:0,life:path.length*0.085+0.6};
+  S.robinCd=15;
+  whisper('The robin knows the way in. It always did.');
+  sfx('robin');
+}
+
+/* ==========================================================================
+   UPDATE
+   ========================================================================== */
+function hurtPlayer(n){
+  const p=S.player;
+  if(p.invuln>0||S.over) return;
+  p.hp-=n; p.invuln=0.95; S.shake=Math.min(S.shake+7,14);
+  burst(p.x,p.y-14,7,['#e8a8ac','#f2cfd2'],60);
+  sfx('hurt');
+  if(p.hp<=0){ p.hp=0; endRun(false); }
+}
+function damageEnemy(e,n,kx,ky){
+  e.hp-=n; e.flash=.14; e.knock=.18; e.vx+=kx; e.vy+=ky;
+  if(e.hp<=0&&!e.dead){
+    e.dead=true; S.kills++;
+    const k=ENEMY_KIND[e.kind];
+    burst(e.x,e.y-10,16,[k.col,k.col2,'#e6d9b8','#c8d99a'],130);
+    floatText(e.x,e.y-30,'—','#f0e2c0');
+    sfx('pop');
+  } else sfx('hit');
+}
+
+function update(dt){
+  S.t+=dt;
+  if(!S.running) return;
+  S.elapsed+=dt;
+  const p=S.player, b=S.buddy;
+
+  /* ---- living hedges ---- */
+  for(const g of G.gates){
+    const cyc=(S.t+g.phase)%g.period;
+    const target = cyc > (g.period-g.shut) ? 1 : 0;
+    g.warn = (!target && cyc > g.period-g.shut-1.1) ? 1 : 0;
+    g.amt += clamp(target-g.amt,-1,1)*Math.min(1,dt*2.6);
+  }
+
+  /* ---- Mary ---- */
+  let ix=0,iy=0;
+  if(keys['a']||keys['arrowleft'])  ix-=1;
+  if(keys['d']||keys['arrowright']) ix+=1;
+  if(keys['w']||keys['arrowup'])    iy-=1;
+  if(keys['s']||keys['arrowdown'])  iy+=1;
+  if(stick.active){ ix+=stick.dx; iy+=stick.dy; }
+  const m=Math.hypot(ix,iy);
+  if(m>1){ix/=m;iy/=m;}
+  const spd=168;
+  moveEnt(p, ix*spd*dt, iy*spd*dt);
+  unstick(p);
+  if(m>0.08){ p.walk+=dt*(9+m*3); if(Math.abs(ix)>0.15) p.face=ix>0?1:-1; }
+  else p.walk+=dt*1.6;
+  p.cast=Math.max(0,p.cast-dt);
+  p.invuln=Math.max(0,p.invuln-dt);
+  p.manaHold=Math.max(0,p.manaHold-dt);
+  if(p.manaHold<=0) p.mana=Math.min(p.manaMax,p.mana+16*dt);
+  if(firing) castSpell();
+
+  /* ---- Dickon ---- */
+  b.trail.push({x:p.x,y:p.y});
+  if(b.trail.length>90) b.trail.shift();
+  const want=b.trail[Math.max(0,b.trail.length-26)];
+  if(want){
+    const dx=want.x-b.x, dy=want.y-b.y, d=Math.hypot(dx,dy);
+    if(d>22){
+      const s=Math.min(200, 60+d*2.4);
+      moveEnt(b, dx/d*s*dt, dy/d*s*dt);
+      b.walk+=dt*9; if(Math.abs(dx)>4) b.face=dx>0?1:-1;
+    } else b.walk+=dt*1.4;
+  }
+  unstick(b);
+  b.cast=Math.max(0,b.cast-dt);
+  b.cool-=dt;
+  if(b.cool<=0){
+    const t=nearestEnemy(b.x,b.y,370);
+    if(t){ buddyCast(t); b.cool=1.35; } else b.cool=0.25;
+  }
+
+  /* ---- unwelcome things ---- */
+  for(const e of S.enemies){
+    if(e.dead) continue;
+    if(dist2(e.x,e.y,p.x,p.y)>1200*1200) continue;  // sleep far away
+    e.t+=dt; e.flash=Math.max(0,e.flash-dt); e.knock=Math.max(0,e.knock-dt);
+    const k=ENEMY_KIND[e.kind];
+    const dx=p.x-e.x, dy=p.y-e.y, d=Math.hypot(dx,dy)||1;
+    const sees = d<k.sight;
+
+    if(e.knock>0){ moveEnt(e,e.vx*dt,e.vy*dt); e.vx*=.86; e.vy*=.86; }
+    else if(e.kind==='bramble'){
+      if(sees){ moveEnt(e, dx/d*k.spd*dt, dy/d*k.spd*dt); }
+      else {
+        e.wind+=dt*.6;
+        moveEnt(e, Math.cos(e.wind)*26*dt, Math.sin(e.wind*1.3)*26*dt);
+      }
+    }
+    else if(e.kind==='rook'){
+      if(sees){
+        const orbit = d<90 ? -0.5 : 1;
+        e.x += (dx/d)*k.spd*dt*orbit;
+        e.y += (dy/d)*k.spd*dt*orbit + Math.sin(e.t*4)*22*dt;
+      } else {
+        e.x += Math.cos(e.wind)*40*dt; e.y += Math.sin(e.wind*1.7)*40*dt; e.wind+=dt*.5;
+        const hx=e.x-e.ax, hy=e.y-e.ay;
+        if(hx*hx+hy*hy>200*200){ e.x-=hx*.02; e.y-=hy*.02; }
+      }
+    }
+    else if(e.kind==='puff'){
+      if(sees){
+        if(d>170) moveEnt(e, dx/d*k.spd*dt, dy/d*k.spd*dt);
+        else moveEnt(e, -dx/d*k.spd*.6*dt, -dy/d*k.spd*.6*dt);
+        e.cool-=dt;
+        if(e.cool<=0){
+          e.cool=2.2;
+          const a=Math.atan2(dy,dx);
+          S.shots.push({x:e.x,y:e.y,vx:Math.cos(a)*190,vy:Math.sin(a)*190,
+            life:2.4,dmg:k.dmg,friendly:false,r:9,t:0,hue:'#c7a8d8'});
+        }
+      } else { e.wind+=dt*.7; moveEnt(e, Math.cos(e.wind)*22*dt, Math.sin(e.wind*1.4)*22*dt); }
+    }
+    else if(e.kind==='thorn'){
+      if(sees){
+        e.tell+=dt;
+        if(e.tell>0.85){
+          e.tell=0;
+          const a=Math.atan2(dy,dx);
+          S.shots.push({x:e.x+Math.cos(a)*14,y:e.y+Math.sin(a)*14,
+            vx:Math.cos(a)*300,vy:Math.sin(a)*300,life:.55,dmg:k.dmg,friendly:false,r:11,t:0,hue:'#7d8a4c'});
+          sfx('whip');
+        }
+      } else e.tell=Math.max(0,e.tell-dt);
+    }
+
+    if(e.kind!=='thorn' && d<e.r+p.r+2) hurtPlayer(k.dmg);
+    else if(e.kind==='thorn' && d<e.r+p.r-4) hurtPlayer(Math.round(k.dmg*.5));
+  }
+  for(let i=S.enemies.length-1;i>=0;i--) if(S.enemies[i].dead) S.enemies.splice(i,1);
+
+  /* ---- spells in flight ---- */
+  for(let i=S.shots.length-1;i>=0;i--){
+    const s=S.shots[i];
+    s.t+=dt; s.life-=dt;
+    s.x+=s.vx*dt; s.y+=s.vy*dt;
+    let gone = s.life<=0 || worldSolid(s.x,s.y);
+    if(!gone && s.friendly){
+      for(const e of S.enemies){
+        if(e.dead) continue;
+        if(dist2(s.x,s.y,e.x,e.y) < (e.r+s.r)*(e.r+s.r)){
+          damageEnemy(e,s.dmg,s.vx*.14,s.vy*.14);
+          burst(s.x,s.y,7,[s.hue,'#fff4d6'],70);
+          gone=true; break;
+        }
+      }
+    } else if(!gone){
+      if(dist2(s.x,s.y,p.x,p.y) < (p.r+s.r)*(p.r+s.r)){ hurtPlayer(s.dmg); gone=true; }
+    }
+    if(gone){
+      if(s.life<=0||worldSolid(s.x,s.y)) burst(s.x,s.y,4,[s.hue],40);
+      S.shots.splice(i,1);
+    }
+  }
+
+  /* ---- potions and herbs ---- */
+  for(const u of S.pickups){
+    if(u.got) continue;
+    u.ph+=dt*2.2;
+    if(dist2(u.x,u.y,p.x,p.y)<34*34){
+      u.got=true;
+      if(u.kind==='potion'){
+        p.hp=Math.min(p.max,p.hp+38); S.potions++;
+        floatText(u.x,u.y-24,'+38','#e8a8ac');
+        burst(u.x,u.y-8,12,['#e8a8ac','#f6dfe6','#d98a8f'],90);
+        toast('A cordial, still warm. Health restored.','rose');
+      } else {
+        S.herbs++; p.manaMax+=14; p.mana=p.manaMax;
+        floatText(u.x,u.y-24,'Herbology','#9dbf72');
+        burst(u.x,u.y-8,12,['#9dbf72','#e0b768','#c8d99a'],90);
+        toast('Herbology: your wand bites deeper.','gold');
+      }
+      sfx(u.kind==='potion'?'heal':'herb');
+    }
+  }
+
+  /* ---- flowers open where you walk ---- */
+  for(const f of S.flowers){
+    const near = dist2(f.x,f.y,p.x,p.y) < 250*250;
+    if(near && f.grow<1) f.grow=Math.min(1,f.grow+dt*1.5);
+    f.ph+=dt*1.4;
+  }
+
+  /* ---- the robin ---- */
+  if(S.robinCd>0) S.robinCd-=dt;
+  if(S.robin){
+    const r=S.robin;
+    r.t+=dt;
+    const seg=Math.min(r.path.length-1, Math.floor(r.t/0.085));
+    const nxt=r.path[Math.min(seg+1,r.path.length-1)];
+    const tx=nxt[0]*TILE+TILE/2, ty=nxt[1]*TILE+TILE/2;
+    r.x=lerp(r.x,tx,Math.min(1,dt*9)); r.y=lerp(r.y,ty,Math.min(1,dt*9));
+    G.seen[idx(nxt[0],nxt[1])]=1;
+    if(Math.random()<.5) S.parts.push({x:r.x,y:r.y,vx:(Math.random()-.5)*12,vy:8,vz:-8,z:52,
+      life:1.4,t:0,rot:Math.random()*TAU,rv:2,s:2.6,col:'#f6dfe6'});
+    if(r.t>r.life){ S.robin=null; }
+  }
+
+  /* ---- ambient ---- */
+  for(let i=S.petals.length-1;i>=0;i--){
+    const q=S.petals[i];
+    q.sp+=dt*1.6; q.rot+=q.rv*dt;
+    q.x+=q.vx*dt+Math.sin(q.sp)*10*dt; q.y+=q.vy*dt+Math.cos(q.sp*.7)*8*dt;
+    q.z+=Math.sin(q.sp*.5)*6*dt;
+    if(dist2(q.x,q.y,p.x,p.y)>1100*1100){ S.petals.splice(i,1); spawnPetal(false); }
+  }
+  for(let i=S.birds.length-1;i>=0;i--){
+    const q=S.birds[i];
+    q.life-=dt; q.ph+=dt*q.sp;
+    q.x+=q.vx*dt; q.y+=q.vy*dt+Math.sin(q.ph*.4)*10*dt;
+    if(q.life<=0||dist2(q.x,q.y,p.x,p.y)>1500*1500) S.birds.splice(i,1);
+  }
+  if(S.birds.length===0 && Math.random()<dt*0.16) spawnFlock();
+
+  for(let i=S.parts.length-1;i>=0;i--){
+    const q=S.parts[i];
+    q.t+=dt; q.rot+=q.rv*dt;
+    q.vz-=190*dt; q.z+=q.vz*dt;
+    if(q.z<0){q.z=0;q.vz*=-.35;q.vx*=.7;q.vy*=.7;}
+    q.x+=q.vx*dt; q.y+=q.vy*dt; q.vx*=.97; q.vy*=.97;
+    if(q.t>q.life) S.parts.splice(i,1);
+  }
+  for(let i=S.floats.length-1;i>=0;i--){
+    const q=S.floats[i]; q.t+=dt; if(q.t>q.life) S.floats.splice(i,1);
+  }
+
+  /* ---- what Mary has seen ---- */
+  const pcx=Math.floor(p.x/TILE), pcy=Math.floor(p.y/TILE);
+  for(let y=pcy-4;y<=pcy+4;y++) for(let x=pcx-4;x<=pcx+4;x++){
+    if(x<0||y<0||x>=COLS||y>=ROWS) continue;
+    G.seen[idx(x,y)]=1;
+  }
+
+  /* ---- Colin ---- */
+  S.colin.ph+=dt;
+  if(!S.over && dist2(p.x,p.y,S.colin.x,S.colin.y)<52*52) endRun(true);
+
+  /* ---- story, told slowly ---- */
+  S.whisperT-=dt;
+  if(S.whisperT<=0){
+    const d=G.dist[idx(clamp(pcx,0,COLS-1),clamp(pcy,0,ROWS-1))];
+    whisper(pickWhisper(d));
+    S.whisperT=17+Math.random()*10;
+  }
+
+  S.shake=Math.max(0,S.shake-dt*22);
+  S.camX=lerp(S.camX,p.x,Math.min(1,dt*7));
+  S.camY=lerp(S.camY,p.y,Math.min(1,dt*7));
+}
+
+/* ==========================================================================
+   RENDER
+   ========================================================================== */
+const SX = wx => wx - S.camX;
+const SY = wy => (wy - S.camY)*SQUASH;
+const grainPat = ctx.createPattern(grainTex,'repeat');
+
+const drawList=[];
+function push(y,k,a,b,c){ drawList.push({y,k,a,b,c}); }
+
+function render(){
+  const hw=VW/2/SCALE+90, hh=VH/2/SCALE+90;
+
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle='#b9cf8c';
+  ctx.fillRect(0,0,cv.width,cv.height);
+
+  const shakeX=(Math.random()-.5)*S.shake*MOTION, shakeY=(Math.random()-.5)*S.shake*MOTION;
+  ctx.setTransform(SCALE*DPR,0,0,SCALE*DPR, (VW/2+shakeX)*DPR, (VH/2+shakeY)*DPR);
+
+  /* ---- the meadow ---- */
+  const gy=S.camY*SQUASH;
+  ctx.save();
+  ctx.translate(-S.camX,-gy);
+  ctx.fillStyle=groundPat;
+  ctx.fillRect(S.camX-hw, gy-hh, hw*2, hh*2);
+  ctx.restore();
+
+  /* visible band of cells */
+  const c0=Math.max(-14,Math.floor((S.camX-hw)/TILE));
+  const c1=Math.min(COLS+13,Math.floor((S.camX+hw)/TILE));
+  const r0=Math.max(-14,Math.floor((S.camY-hh/SQUASH-2.4*TILE)/TILE));
+  const r1=Math.min(ROWS+13,Math.floor((S.camY+hh/SQUASH+TILE)/TILE));
+
+  /* ---- the heart's paving, laid before anything stands on it ---- */
+  if(CX>c0-8&&CX<c1+8){
+    ctx.save();
+    ctx.globalAlpha=.55;
+    ctx.fillStyle=P.path;
+    const hx=SX((CX-3.4)*TILE), hy=SY((CY-3.4)*TILE);
+    ctx.beginPath();
+    ctx.ellipse(hx+3.4*TILE, hy+3.4*TILE*SQUASH, 3.9*TILE, 3.9*TH, 0, 0, TAU);
+    ctx.fill();
+    ctx.globalAlpha=.35; ctx.fillStyle=P.stone;
+    ctx.beginPath();
+    ctx.ellipse(hx+3.4*TILE, hy+3.4*TILE*SQUASH, 1.6*TILE, 1.6*TH, 0, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /* ---- one flat shadow pass so the hedge walls read as a single cut-out ---- */
+  ctx.beginPath();
+  for(let cy=r0;cy<=r1;cy++) for(let cx=c0;cx<=c1;cx++){
+    if(cx<0||cy<0||cx>=COLS||cy>=ROWS) continue;
+    const gt=G.gateAt.get(idx(cx,cy));
+    const solid = G.grid[idx(cx,cy)]===1 || (gt && gt.amt>0.05);
+    if(!solid) continue;
+    const h=(gt?gt.amt:1);
+    ctx.rect(SX(cx*TILE)+16*h, SY(cy*TILE)+10*h, TILE, TH);
+  }
+  ctx.fillStyle=P.shade; ctx.fill();
+
+  /* ---- assemble the painter's list ---- */
+  drawList.length=0;
+  for(let cy=r0;cy<=r1;cy++) for(let cx=c0;cx<=c1;cx++){
+    if(cx<0||cy<0||cx>=COLS||cy>=ROWS) continue;
+    const gt=G.gateAt.get(idx(cx,cy));
+    if(G.grid[idx(cx,cy)]===1) push(cy*TILE+TILE,0,cx,cy,null);
+    else if(gt && gt.amt>0.02) push(cy*TILE+TILE,0,cx,cy,gt);
+  }
+  const vx0=S.camX-hw-160, vx1=S.camX+hw+160, vy0=S.camY-hh/SQUASH-320, vy1=S.camY+hh/SQUASH+160;
+  const vis=o=>o.x>vx0&&o.x<vx1&&o.y>vy0&&o.y<vy1;
+  for(const t of S.trees) if(vis(t)) push(t.y,1,t);
+  for(const f of S.flowers) if(f.grow>0.01&&vis(f)) push(f.y,2,f);
+  for(const s of S.stones) if(vis(s)) push(s.y,3,s);
+  for(const u of S.pickups) if(!u.got&&vis(u)) push(u.y,4,u);
+  for(const e of S.enemies) if(!e.fly&&vis(e)) push(e.y,5,e);
+  if(vis(S.colin)) push(S.colin.y+6,8,S.colin);
+  push(S.player.y,6,S.player);
+  push(S.buddy.y,7,S.buddy);
+
+  drawList.sort((a,b)=>a.y-b.y);
+  for(const d of drawList){
+    switch(d.k){
+      case 0: drawHedge(d.a,d.b,d.c); break;
+      case 1: drawSprite(d.a, Math.sin(S.t*.9+d.a.ph)*0.01); break;
+      case 2: drawFlower(d.a); break;
+      case 3: drawSprite(d.a,0); break;
+      case 4: drawPickup(d.a); break;
+      case 5: drawEnemy(d.a); break;
+      case 6: drawGirl(d.a); break;
+      case 7: drawBoy(d.a); break;
+      case 8: drawColin(d.a); break;
+    }
+  }
+
+  /* ---- things in the air ---- */
+  for(const e of S.enemies) if(e.fly&&vis(e)) drawEnemy(e);
+  drawShots();
+  drawParts();
+  drawPetals();
+  if(S.robin) drawRobin(S.robin);
+  drawBirds();
+  drawFloats();
+
+  /* ---- paper on top of everything ---- */
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.globalAlpha=.55;
+  ctx.fillStyle=grainPat;
+  ctx.fillRect(0,0,VW,VH);
+  ctx.globalAlpha=1;
+  const warm=ctx.createLinearGradient(0,0,0,VH);
+  warm.addColorStop(0,'rgba(247,231,196,.30)');
+  warm.addColorStop(.45,'rgba(247,231,196,0)');
+  warm.addColorStop(1,'rgba(74,88,62,.22)');
+  ctx.fillStyle=warm; ctx.fillRect(0,0,VW,VH);
+}
+
+/* ------------------------------------------------------------------ pieces */
+function drawSprite(o,rot){
+  const sx=SX(o.x), sy=SY(o.y);
+  ctx.save(); ctx.translate(sx,sy);
+  if(rot){ctx.rotate(rot);}
+  ctx.drawImage(o.s,-o.s.anchorX,-o.s.anchorY);
+  ctx.restore();
+}
+const onHeartRing=(cx,cy)=>Math.abs(cx-CX)<=5&&Math.abs(cy-CY)<=5&&
+  (Math.abs(cx-CX)===5||Math.abs(cy-CY)===5);
+function drawHedge(cx,cy,gate){
+  const tall=onHeartRing(cx,cy);
+  const spr=tall ? TALL_HEDGES[(cx*3+cy*5)%TALL_HEDGES.length]
+                 : HEDGES[(cx*7+cy*13+((cx*cy)%3))%HEDGES.length];
+  const sx=SX(cx*TILE), sy=SY(cy*TILE);
+  const ph=cx*0.7+cy*1.1;
+  const sway=(Math.sin(S.t*1.05+ph)*0.011 + Math.sin(S.t*2.4+ph*1.7)*0.0045)*MOTION;
+  ctx.save();
+  ctx.translate(sx+TILE/2, sy+TH);
+  ctx.rotate(sway);
+  if(gate){
+    ctx.scale(1,clamp(gate.amt,0.02,1));
+    if(gate.warn){
+      ctx.globalAlpha=.5+Math.sin(S.t*17)*.3;
+      ctx.fillStyle=P.gold;
+      ctx.fillRect(-TILE/2,-4,TILE,6);
+      ctx.globalAlpha=1;
+    }
+  }
+  ctx.drawImage(spr,-spr.anchorX,-spr.anchorY);
+  ctx.restore();
+}
+function drawFlower(f){
+  const sx=SX(f.x), sy=SY(f.y);
+  const g=f.grow, s=g*g*(3-2*g);           // smoothstep: it unfurls
+  ctx.save();
+  ctx.translate(sx,sy);
+  ctx.rotate(Math.sin(S.t*1.6+f.ph)*0.05);
+  ctx.scale(s,s);
+  ctx.drawImage(f.s,-f.s.anchorX,-f.s.anchorY);
+  ctx.restore();
+}
+function drawPickup(u){
+  const sx=SX(u.x), sy=SY(u.y);
+  const bob=Math.sin(u.ph)*4;
+  ctx.save(); ctx.translate(sx,sy);
+  ctx.fillStyle='rgba(96,118,104,.26)';
+  ctx.beginPath(); ctx.ellipse(2,1,11,4.5,0,0,TAU); ctx.fill();
+  // halo
+  ctx.globalAlpha=.22+Math.sin(u.ph*1.4)*.08;
+  ctx.fillStyle=u.kind==='potion'?P.rose:P.gold;
+  ctx.beginPath(); ctx.ellipse(0,-10+bob,17,13,0,0,TAU); ctx.fill();
+  ctx.globalAlpha=1;
+  ctx.translate(0,bob);
+  if(u.kind==='potion'){
+    poly(ctx,[-6,-12, 6,-12, 8,-26, -8,-26],'#c8dae0');
+    poly(ctx,[-6,-12, 6,-12, 7,-20, -7,-20],P.roseDk);
+    poly(ctx,[-6,-12, 0,-12, 0,-26, -6,-26],'rgba(255,255,255,.28)');
+    poly(ctx,[-3,-26, 3,-26, 3,-31, -3,-31],P.bark);
+    poly(ctx,[-4,-31, 4,-31, 3,-34, -3,-34],P.barkDk);
+  } else {
+    ctx.strokeStyle='#5d7d46'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(0,-28); ctx.stroke();
+    for(let i=0;i<3;i++){
+      const y=-14-i*6, w=9-i*1.6;
+      poly(ctx,[0,y, -w,y-5, -2,y-8],'#86a85a');
+      poly(ctx,[0,y-3, w,y-8, 2,y-11],'#9dbf72');
+    }
+    ctx.fillStyle=P.gold;
+    ctx.beginPath(); ctx.arc(0,-29,2.6,0,TAU); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* ---------------------------------------------------------------- the cast */
+function shadowBlob(w,h,a){
+  ctx.fillStyle='rgba(96,118,104,'+a+')';
+  ctx.beginPath(); ctx.ellipse(3,2,w,h,0,0,TAU); ctx.fill();
+}
+function drawGirl(p){
+  const sx=SX(p.x), sy=SY(p.y);
+  ctx.save(); ctx.translate(sx,sy);
+  shadowBlob(15,6,.30);
+  if(p.invuln>0 && Math.floor(S.t*18)%2===0) ctx.globalAlpha=.45;
+  ctx.scale(p.face,1);
+  const sw=Math.sin(p.walk), bob=Math.abs(Math.sin(p.walk))*1.7;
+  ctx.translate(0,-bob);
+  // boots + stockings
+  poly(ctx,[-6+sw*3,-14, -1+sw*3,-14, -1+sw*4,-1, -7+sw*4,-1],'#e6d9bd');
+  poly(ctx,[ 1-sw*3,-14,  6-sw*3,-14,  7-sw*4,-1,  1-sw*4,-1],'#efe2c8');
+  poly(ctx,[-8+sw*4,-4, 0+sw*4,-4, 1+sw*4,0, -9+sw*4,0],'#5f4a3a');
+  poly(ctx,[ 0-sw*4,-4, 8-sw*4,-4, 8-sw*4,0,  -1-sw*4,0],'#6d5643');
+  // pinafore, cut from three folded pieces
+  poly(ctx,[-5,-31, 5,-31, 12,-12, -12,-12],P.roseDk);
+  poly(ctx,[-5,-31, 2,-31, 6,-12, -12,-12],P.rose);
+  poly(ctx,[-3,-30, 3,-30, 6,-15, -6,-15],'rgba(246,239,221,.85)');
+  // arms
+  const raise = p.cast>0 ? -6 : 0;
+  poly(ctx,[-5,-30, -1,-30, -2,-20, -6,-20],'#f0dcc0');
+  poly(ctx,[4,-31, 8,-30, 13,-23+raise, 10,-21+raise],'#f0dcc0');
+  // the wand
+  ctx.save();
+  ctx.translate(12,-22+raise);
+  ctx.rotate(p.cast>0 ? -0.85 : -0.35);
+  poly(ctx,[0,-1.4, 20,-1, 20,1, 0,1.4],'#d9c49b');
+  poly(ctx,[0,-1.4, 20,-1, 20,0, 0,0],'#efdfbd');
+  if(p.cast>0){
+    ctx.globalAlpha=.85;
+    ctx.fillStyle=P.gold;
+    ctx.beginPath(); ctx.arc(21,0,3.4+Math.random()*1.6,0,TAU); ctx.fill();
+    ctx.globalAlpha=.3;
+    ctx.beginPath(); ctx.arc(21,0,8,0,TAU); ctx.fill();
+    ctx.globalAlpha=1;
+  } else { ctx.fillStyle=P.gold; ctx.beginPath(); ctx.arc(20.5,0,1.8,0,TAU); ctx.fill(); }
+  ctx.restore();
+  // head
+  poly(ctx,[-6,-31, 6,-31, 7,-40, -7,-40],'#f0dcc0');
+  ctx.fillStyle='#f0dcc0';
+  ctx.beginPath(); ctx.ellipse(0,-40,7,7.4,0,0,TAU); ctx.fill();
+  // hair, three paper layers
+  poly(ctx,[-8,-40, -7,-47, 4,-49, 8,-42, 8,-36, 5,-40, -4,-41, -6,-35],'#5b4133');
+  poly(ctx,[-8,-40, -6,-46, 2,-48, 5,-43, -2,-43, -6,-36],'#6d503e');
+  poly(ctx,[6,-42, 11,-38, 10,-29, 6,-33],'#5b4133');
+  // eye + cheek
+  ctx.fillStyle='#3f3128';
+  ctx.beginPath(); ctx.ellipse(3.2,-40,1.1,1.5,0,0,TAU); ctx.fill();
+  ctx.fillStyle='rgba(200,120,120,.35)';
+  ctx.beginPath(); ctx.ellipse(5,-37,2.2,1.4,0,0,TAU); ctx.fill();
+  ctx.restore();
+}
+function drawBoy(b){
+  const sx=SX(b.x), sy=SY(b.y);
+  ctx.save(); ctx.translate(sx,sy);
+  shadowBlob(15,6,.28);
+  ctx.scale(b.face,1);
+  const sw=Math.sin(b.walk), bob=Math.abs(Math.sin(b.walk))*1.6;
+  ctx.translate(0,-bob);
+  // trousers
+  poly(ctx,[-7+sw*3,-18, -1+sw*3,-18, -1+sw*4,-2, -8+sw*4,-2],'#a8724f');
+  poly(ctx,[ 1-sw*3,-18,  7-sw*3,-18,  8-sw*4,-2,  1-sw*4,-2],'#b8825c');
+  poly(ctx,[-9+sw*4,-5, 0+sw*4,-5, 1+sw*4,0, -10+sw*4,0],'#5a4433');
+  poly(ctx,[ 0-sw*4,-5, 9-sw*4,-5, 9-sw*4,0, -1-sw*4,0],'#6b5240');
+  // shirt + waistcoat
+  poly(ctx,[-6,-34, 6,-34, 8,-17, -8,-17],'#eee1c4');
+  poly(ctx,[-6,-34, 1,-34, 3,-17, -8,-17],'#7f9a5c');
+  poly(ctx,[3,-34, 6,-34, 8,-17, 5,-17],'#6d8a4d');
+  // arms
+  const raise = b.cast>0 ? -7 : 0;
+  poly(ctx,[-6,-33, -2,-33, -3,-22, -7,-22],'#eee1c4');
+  poly(ctx,[5,-34, 9,-33, 14,-25+raise, 11,-23+raise],'#eee1c4');
+  ctx.save();
+  ctx.translate(13,-24+raise);
+  ctx.rotate(b.cast>0 ? -0.9 : -0.3);
+  poly(ctx,[0,-1.3, 18,-1, 18,1, 0,1.3],'#9d8259');
+  if(b.cast>0){
+    ctx.globalAlpha=.8; ctx.fillStyle='#bfe0c9';
+    ctx.beginPath(); ctx.arc(19,0,3.6,0,TAU); ctx.fill(); ctx.globalAlpha=1;
+  }
+  ctx.restore();
+  // head + cap
+  ctx.fillStyle='#f0d5b2';
+  ctx.beginPath(); ctx.ellipse(0,-42,7,7.2,0,0,TAU); ctx.fill();
+  poly(ctx,[-8,-43, 8,-43, 7,-50, -6,-50],'#8a6b45');
+  poly(ctx,[-9,-42, 10,-43, 10,-40, -9,-40],'#7a5c3a');
+  poly(ctx,[-8,-43, 1,-43, 0,-50, -6,-50],'#9b7a52');
+  ctx.fillStyle='#3f3128';
+  ctx.beginPath(); ctx.ellipse(3.4,-42,1.1,1.5,0,0,TAU); ctx.fill();
+  ctx.fillStyle='rgba(190,120,90,.4)';
+  for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(4+i*1.6,-39+((i%2)?1:0),.6,0,TAU);ctx.fill();}
+  ctx.restore();
+}
+function drawColin(c){
+  const sx=SX(c.x), sy=SY(c.y);
+  ctx.save(); ctx.translate(sx,sy);
+  // rose arch, standing behind him
+  ctx.save(); ctx.translate(0,-6);
+  poly(ctx,[-44,0, -36,0, -34,-70, -42,-72],'#8d9b7a');
+  poly(ctx,[ 36,0,  44,0,  42,-72,  34,-70],'#7e8c6c');
+  ctx.strokeStyle='#8d9b7a'; ctx.lineWidth=8; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-38,-70); ctx.quadraticCurveTo(0,-108,38,-70); ctx.stroke();
+  const rr=mulberry32(4242);
+  for(let i=0;i<34;i++){
+    const t=rr(), a=Math.PI+t*Math.PI;
+    const bx=Math.cos(a)*38, by=-70-Math.sin(a)*0+(-Math.sin(t*Math.PI)*36);
+    const px=(t*2-1)*40, py=-70-Math.sin(t*Math.PI)*36+(rr()-.5)*12;
+    ctx.fillStyle=rr()<.45?'#e8a8ac':(rr()<.6?'#f6dfe6':'#9dbf72');
+    ctx.beginPath(); ctx.arc(px,py,2.4+rr()*2.6,0,TAU); ctx.fill();
+  }
+  ctx.restore();
+  // bench
+  shadowBlob(34,9,.24);
+  poly(ctx,[-30,-6, 30,-6, 32,-14, -32,-14],P.stoneDk);
+  poly(ctx,[-32,-14, 32,-14, 30,-19, -30,-19],P.stone);
+  poly(ctx,[-26,-6, -20,-6, -20,0, -26,0],P.stoneDk);
+  poly(ctx,[ 20,-6,  26,-6,  26,0,  20,0],P.stoneDk);
+  // Colin
+  const br=Math.sin(c.ph*1.3)*1.2;
+  ctx.save(); ctx.translate(0,-18+br*0.4);
+  poly(ctx,[-11,0, 11,0, 13,-8, -13,-8],'#c8b9d8');      // blanket
+  poly(ctx,[-11,0, 1,0, 2,-8, -13,-8],'#d6c8e4');
+  poly(ctx,[-6,-8, 6,-8, 7,-24, -7,-24],'#eae0cd');      // nightshirt
+  poly(ctx,[-6,-8, 0,-8, 0,-24, -7,-24],'#f6efdd');
+  poly(ctx,[-7,-23, -3,-23, -4,-13, -8,-13],'#eae0cd');
+  poly(ctx,[ 6,-23,  9,-22, 10,-13,  6,-13],'#eae0cd');
+  ctx.fillStyle='#f2ddc2';
+  ctx.beginPath(); ctx.ellipse(0,-31,6.6,7,0,0,TAU); ctx.fill();
+  poly(ctx,[-7,-32, 7,-32, 6,-39, -6,-39],'#3f3a44');
+  poly(ctx,[-7,-32, 0,-32, -1,-39, -6,-39],'#514a58');
+  ctx.fillStyle='#3f3128';
+  ctx.beginPath(); ctx.ellipse(2.6,-31,1,1.4,0,0,TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-2.6,-31,1,1.4,0,0,TAU); ctx.fill();
+  ctx.restore();
+  // the robin that never left him
+  const rb=Math.sin(c.ph*2)*2;
+  ctx.save(); ctx.translate(26,-22+rb);
+  poly(ctx,[0,0, -7,-3, -5,-7, 3,-6],'#6f6154');
+  ctx.fillStyle=P.rose;
+  ctx.beginPath(); ctx.arc(-1.5,-4.5,3,0,TAU); ctx.fill();
+  ctx.fillStyle=P.gold;
+  poly(ctx,[3,-6, 6,-5, 3,-4],P.gold);
+  ctx.restore();
+  ctx.restore();
+}
+
+/* ------------------------------------------------------------ the intruders */
+function drawEnemy(e){
+  const k=ENEMY_KIND[e.kind];
+  const sx=SX(e.x), sy=SY(e.y);
+  const rr=mulberry32(e.seed);
+  ctx.save(); ctx.translate(sx,sy);
+  if(e.fly){
+    ctx.save();
+    ctx.fillStyle='rgba(96,118,104,.22)';
+    ctx.beginPath(); ctx.ellipse(4,4,11,4,0,0,TAU); ctx.fill();
+    ctx.restore();
+    ctx.translate(0,-46+Math.sin(e.t*3)*5);
+  } else shadowBlob(e.r,e.r*0.42,.26);
+
+  const flash=e.flash>0;
+  const c1=flash?'#fff3e0':k.col, c2=flash?'#ffffff':k.col2;
+
+  if(e.kind==='bramble'){
+    const wob=Math.sin(e.t*7)*2;
+    for(let i=0;i<9;i++){
+      const a=i/9*TAU+e.t*.5, r=e.r*(.7+rr()*.7);
+      poly(ctx,[Math.cos(a)*r, -10+Math.sin(a)*r*.7+wob,
+                Math.cos(a+.9)*r*.5, -14+Math.sin(a+.9)*r*.4,
+                Math.cos(a-.4)*r*1.1, -6+Math.sin(a-.4)*r*.8], i%2?c1:c2);
+    }
+    ctx.strokeStyle=P.thorn; ctx.lineWidth=1.6;
+    for(let i=0;i<6;i++){
+      const a=i/6*TAU+e.t*.9;
+      ctx.beginPath(); ctx.moveTo(Math.cos(a)*6,-10+Math.sin(a)*5);
+      ctx.lineTo(Math.cos(a)*(e.r+7),-10+Math.sin(a)*(e.r+3)); ctx.stroke();
+    }
+    ctx.fillStyle='#f6e4b8';
+    ctx.beginPath(); ctx.arc(-3,-12,1.7,0,TAU); ctx.arc(3,-12,1.7,0,TAU); ctx.fill();
+  }
+  else if(e.kind==='thorn'){
+    const t=clamp(e.tell/0.85,0,1);
+    const lean=Math.sin(e.t*2)*3;
+    ctx.strokeStyle='#4f6238'; ctx.lineWidth=5; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.quadraticCurveTo(lean*2,-16,lean*3,-30-t*8); ctx.stroke();
+    for(let i=0;i<7;i++){
+      const a=i/7*TAU+e.t*.4, r=13+rr()*10;
+      poly(ctx,[lean*3+Math.cos(a)*r, -32-t*8+Math.sin(a)*r*.8,
+                lean*3+Math.cos(a+.8)*r*.4, -40-t*8+Math.sin(a+.8)*r*.4,
+                lean*3+Math.cos(a-.5)*r*.9, -26-t*8+Math.sin(a-.5)*r*.7], i%2?c1:c2);
+    }
+    poly(ctx,[lean*3-8,-36-t*8, lean*3+8,-36-t*8, lean*3,-24-t*8], flash?'#fff':'#3c4a2c');
+    if(t>0.55){
+      ctx.globalAlpha=(t-0.55)/0.45*.7;
+      ctx.fillStyle=P.gold;
+      ctx.beginPath(); ctx.arc(lean*3,-34-t*8,10+t*5,0,TAU); ctx.fill();
+      ctx.globalAlpha=1;
+    }
+    for(let i=0;i<5;i++){
+      const a=Math.PI+i/5*Math.PI;
+      poly(ctx,[Math.cos(a)*12,Math.sin(a)*5, Math.cos(a)*20,Math.sin(a)*8-3, Math.cos(a)*14,Math.sin(a)*7+3],'#5c6b40');
+    }
+  }
+  else if(e.kind==='rook'){
+    const flap=Math.sin(e.t*13);
+    poly(ctx,[0,0, -26,-6-flap*11, -13,4],c2);
+    poly(ctx,[0,0,  26,-6+flap*11,  13,4],c1);
+    poly(ctx,[-9,-4, 9,-4, 6,7, -6,7],c1);
+    ctx.fillStyle=c2;
+    ctx.beginPath(); ctx.arc(6,-7,5.4,0,TAU); ctx.fill();
+    poly(ctx,[10,-7, 17,-5, 10,-3],P.gold);
+    ctx.fillStyle='#f6e4b8'; ctx.beginPath(); ctx.arc(7,-8.5,1.3,0,TAU); ctx.fill();
+  }
+  else { // puff
+    const pulse=1+Math.sin(e.t*3)*.08;
+    ctx.save(); ctx.translate(0,-20+Math.sin(e.t*1.7)*4); ctx.scale(pulse,pulse);
+    for(let i=0;i<11;i++){
+      const a=i/11*TAU+e.t*.3, r=e.r*(.6+rr()*.7);
+      poly(ctx,[Math.cos(a)*r,Math.sin(a)*r*.9,
+                Math.cos(a+.6)*r*.5,Math.sin(a+.6)*r*.5,
+                Math.cos(a-.6)*r*.8,Math.sin(a-.6)*r*.8], i%3?c1:c2);
+    }
+    ctx.fillStyle='#f6e4b8';
+    ctx.beginPath(); ctx.arc(-3.5,-1,1.6,0,TAU); ctx.arc(3.5,-1,1.6,0,TAU); ctx.fill();
+    ctx.globalAlpha=.35; ctx.fillStyle='#e0cdec';
+    for(let i=0;i<4;i++){
+      const a=e.t*1.4+i*1.7;
+      ctx.beginPath(); ctx.arc(Math.cos(a)*(e.r+9),Math.sin(a)*(e.r+6),2.2,0,TAU); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+/* -------------------------------------------------------------- the effects */
+function drawShots(){
+  for(const s of S.shots){
+    const sx=SX(s.x), sy=SY(s.y)-14;
+    ctx.save(); ctx.translate(sx,sy); ctx.rotate(s.t*11);
+    ctx.globalAlpha=.28; ctx.fillStyle=s.hue;
+    ctx.beginPath(); ctx.arc(0,0,s.r*2.1,0,TAU); ctx.fill();
+    ctx.globalAlpha=1;
+    const n=4;
+    for(let i=0;i<n;i++){
+      const a=i/n*TAU;
+      poly(ctx,[Math.cos(a)*s.r*1.6,Math.sin(a)*s.r*1.6,
+                Math.cos(a+.8)*s.r*.5,Math.sin(a+.8)*s.r*.5,
+                Math.cos(a-.8)*s.r*.5,Math.sin(a-.8)*s.r*.5], i%2?s.hue:'#fffaf0');
+    }
+    ctx.restore();
+  }
+}
+function drawParts(){
+  for(const q of S.parts){
+    const f=1-q.t/q.life;
+    const sx=SX(q.x), sy=SY(q.y)-q.z;
+    ctx.save(); ctx.translate(sx,sy); ctx.rotate(q.rot);
+    ctx.globalAlpha=clamp(f*1.4,0,1);
+    ctx.fillStyle=q.col;
+    ctx.fillRect(-q.s/2,-q.s/2,q.s,q.s*0.72);
+    ctx.restore();
+  }
+  ctx.globalAlpha=1;
+}
+function drawPetals(){
+  for(const q of S.petals){
+    const sx=SX(q.x), sy=SY(q.y)-q.z;
+    ctx.save(); ctx.translate(sx,sy); ctx.rotate(q.rot);
+    ctx.globalAlpha=.85;
+    ctx.fillStyle=q.col;
+    ctx.beginPath(); ctx.ellipse(0,0,q.s,q.s*.55,0,0,TAU); ctx.fill();
+    ctx.restore();
+  }
+  ctx.globalAlpha=1;
+}
+function drawBirds(){
+  for(const q of S.birds){
+    const sx=SX(q.x), sy=SY(q.y);
+    ctx.save();
+    ctx.globalAlpha=.16; ctx.fillStyle='#5d7d46';
+    ctx.beginPath(); ctx.ellipse(sx+q.z*.16,sy,7,2.6,0,0,TAU); ctx.fill();
+    ctx.globalAlpha=1;
+    ctx.restore();
+    const flap=Math.sin(q.ph);
+    ctx.save(); ctx.translate(sx,sy-q.z);
+    ctx.scale(q.vx>0?1:-1,1);
+    ctx.fillStyle='#6b6152';
+    ctx.beginPath();
+    ctx.moveTo(-10,-flap*7); ctx.quadraticCurveTo(-4,2,0,0);
+    ctx.quadraticCurveTo(4,2,10,-flap*7);
+    ctx.quadraticCurveTo(4,-1,0,2.4);
+    ctx.quadraticCurveTo(-4,-1,-10,-flap*7);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+function drawRobin(r){
+  const sx=SX(r.x), sy=SY(r.y)-r.z;
+  ctx.save();
+  ctx.globalAlpha=.18; ctx.fillStyle='#5d7d46';
+  ctx.beginPath(); ctx.ellipse(SX(r.x)+8,SY(r.y),8,3,0,0,TAU); ctx.fill();
+  ctx.globalAlpha=1;
+  ctx.translate(sx,sy);
+  const flap=Math.sin(S.t*22);
+  ctx.scale(r.x>S.player.x?1:-1,1);
+  poly(ctx,[0,0, -12,-4-flap*6, -7,5],'#6f6154');
+  poly(ctx,[0,0,  10,-3+flap*6,  6,5],'#7d6f60');
+  ctx.fillStyle=P.rose;
+  ctx.beginPath(); ctx.arc(0,-2,5,0,TAU); ctx.fill();
+  ctx.fillStyle='#6f6154';
+  ctx.beginPath(); ctx.arc(4,-6,3.4,0,TAU); ctx.fill();
+  poly(ctx,[7,-6, 12,-5, 7,-4],P.gold);
+  ctx.restore();
+}
+function drawFloats(){
+  ctx.textAlign='center';
+  for(const q of S.floats){
+    const f=q.t/q.life;
+    ctx.save();
+    ctx.globalAlpha=clamp((1-f)*1.6,0,1);
+    ctx.translate(SX(q.x),SY(q.y)-f*22);
+    ctx.font='600 13px Georgia, serif';
+    ctx.fillStyle='rgba(50,42,34,.5)';
+    ctx.fillText(q.txt,1,1);
+    ctx.fillStyle=q.col;
+    ctx.fillText(q.txt,0,0);
+    ctx.restore();
+  }
+  ctx.globalAlpha=1;
+}
+
+/* ==========================================================================
+   HUD
+   ========================================================================== */
+const heartsEl=document.getElementById('hearts');
+const manaEl=document.getElementById('manaFill');
+const herbEl=document.getElementById('herbCount');
+const mm=document.getElementById('minimap'), mmx=mm.getContext('2d');
+const mapLabel=document.getElementById('mapLabel');
+let lastHearts=-1;
+
+function heartSVG(fill){
+  const c = fill>=1?'#d05b64' : fill>0 ? '#d05b64' : '#cbb894';
+  const clip = fill>=1?100 : Math.round(fill*100);
+  return '<svg viewBox="0 0 24 24" aria-hidden="true">'+
+    '<defs><linearGradient id="g'+clip+'"><stop offset="'+clip+'%" stop-color="'+c+'"/>'+
+    '<stop offset="'+clip+'%" stop-color="#cbb894"/></linearGradient></defs>'+
+    '<path d="M12 21S3.5 14.6 3.5 9.1A4.6 4.6 0 0 1 12 6.4 4.6 4.6 0 0 1 20.5 9.1C20.5 14.6 12 21 12 21z" '+
+    'fill="url(#g'+clip+')" stroke="#8a5a4a" stroke-width="1.1" stroke-linejoin="round"/></svg>';
+}
+function syncHUD(){
+  const p=S.player; if(!p) return;
+  const h=Math.ceil(p.hp/20*4)/4;
+  if(h!==lastHearts){
+    lastHearts=h;
+    let html='';
+    for(let i=0;i<5;i++) html+=heartSVG(clamp(p.hp/20-i,0,1));
+    heartsEl.innerHTML=html;
+  }
+  manaEl.style.width=(p.mana/p.manaMax*100).toFixed(1)+'%';
+  herbEl.textContent=S.herbs;
+  mapLabel.textContent = S.robinCd>0 ? 'Robin rests · '+Math.ceil(S.robinCd)+'s' : 'Press R — send the robin';
+}
+function drawMinimap(){
+  const s=mm.width/COLS;
+  mmx.fillStyle='#e8dcbe'; mmx.fillRect(0,0,mm.width,mm.height);
+  for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
+    if(!G.seen[idx(x,y)]) continue;
+    const solid=G.grid[idx(x,y)]===1;
+    mmx.fillStyle=solid?'#87a35f':'#f6efdd';
+    mmx.fillRect(x*s,y*s,s+0.6,s+0.6);
+  }
+  // the heart, always faintly known
+  mmx.globalAlpha=.9; mmx.fillStyle=P.roseDk;
+  mmx.beginPath(); mmx.arc(CX*s+s/2,CY*s+s/2,s*1.5,0,TAU); mmx.fill();
+  mmx.globalAlpha=1;
+  for(const u of S.pickups){
+    if(u.got) continue;
+    const cx=Math.floor(u.x/TILE), cy=Math.floor(u.y/TILE);
+    if(!G.seen[idx(cx,cy)]) continue;
+    mmx.fillStyle=u.kind==='potion'?'#d98a8f':'#e0b768';
+    mmx.fillRect(cx*s+s*.2,cy*s+s*.2,s*.7,s*.7);
+  }
+  const b=S.buddy, p=S.player;
+  mmx.fillStyle='#7f9a5c';
+  mmx.beginPath(); mmx.arc(b.x/TILE*s,b.y/TILE*s,s*.8,0,TAU); mmx.fill();
+  mmx.fillStyle='#3f382c';
+  mmx.beginPath(); mmx.arc(p.x/TILE*s,p.y/TILE*s,s*1.05,0,TAU); mmx.fill();
+  mmx.strokeStyle='#f6efdd'; mmx.lineWidth=1.4; mmx.stroke();
+}
+
+/* ------------------------------------------------------------ words */
+const whisperEl=document.getElementById('whisper');
+let whisperTimer=null;
+function whisper(txt){
+  whisperEl.textContent=txt;
+  whisperEl.classList.add('show');
+  clearTimeout(whisperTimer);
+  whisperTimer=setTimeout(()=>whisperEl.classList.remove('show'),5200);
+}
+const WHISPERS_FAR=[
+  'Nobody has walked this path in ten years. The hedges have grown opinions.',
+  '“Might I have a bit of earth?” she had asked. This was not what she meant.',
+  'Somewhere ahead, a boy who has never seen the sky.',
+  'Dickon keeps close. He talks to the hedges; sometimes they answer.',
+  'The wind comes through the green like a page turning.'
+];
+const WHISPERS_NEAR=[
+  'The hedges are thicker here, and less patient.',
+  'You can hear it now — a robin, singing in a walled place.',
+  'Roses. Ten years neglected, and still roses.',
+  'Almost. Keep your wand up.'
+];
+function pickWhisper(d){
+  const list = (d>=0&&d<26) ? WHISPERS_NEAR : WHISPERS_FAR;
+  return list[(S.whisperIdx++)%list.length];
+}
+const toastsEl=document.getElementById('toasts');
+function toast(txt,cls){
+  const el=document.createElement('div');
+  el.className='toast'+(cls?' '+cls:'');
+  el.textContent=txt;
+  toastsEl.appendChild(el);
+  setTimeout(()=>{el.style.transition='opacity .4s';el.style.opacity='0';},2400);
+  setTimeout(()=>el.remove(),2900);
+  while(toastsEl.children.length>3) toastsEl.firstChild.remove();
+}
+
+/* ==========================================================================
+   SOUND — a few oscillators, nothing sampled
+   ========================================================================== */
+let AC=null, master=null, muted=false;
+function initAudio(){
+  if(AC) return;
+  try{
+    AC=new (window.AudioContext||window.webkitAudioContext)();
+    master=AC.createGain(); master.gain.value=0.16; master.connect(AC.destination);
+  }catch(e){ AC=null; }
+}
+function tone(freq,dur,type,vol,slide){
+  if(!AC||muted) return;
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.type=type||'sine'; o.frequency.value=freq;
+  if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(40,slide),AC.currentTime+dur);
+  g.gain.setValueAtTime(0,AC.currentTime);
+  g.gain.linearRampToValueAtTime(vol||0.5,AC.currentTime+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+dur);
+  o.connect(g); g.connect(master);
+  o.start(); o.stop(AC.currentTime+dur+0.02);
+}
+function sfx(name){
+  switch(name){
+    case 'cast':  tone(760,0.16,'triangle',0.35,1180); break;
+    case 'cast2': tone(560,0.16,'triangle',0.24,880); break;
+    case 'hit':   tone(220,0.09,'square',0.16,150); break;
+    case 'pop':   tone(150,0.24,'sawtooth',0.18,60); tone(430,0.16,'triangle',0.14,220); break;
+    case 'hurt':  tone(180,0.3,'sawtooth',0.3,90); break;
+    case 'heal':  tone(520,0.16,'sine',0.3,780); setTimeout(()=>tone(780,0.24,'sine',0.24,1040),90); break;
+    case 'herb':  tone(660,0.14,'sine',0.28,880); setTimeout(()=>tone(990,0.26,'sine',0.2,1320),80); break;
+    case 'robin': tone(1180,0.1,'sine',0.28,1560); setTimeout(()=>tone(1560,0.12,'sine',0.22,1240),110);
+                  setTimeout(()=>tone(1320,0.16,'sine',0.18,1760),230); break;
+    case 'whip':  tone(320,0.1,'sawtooth',0.14,120); break;
+    case 'empty': tone(120,0.08,'sine',0.1,90); break;
+    case 'win':   [523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,0.5,'sine',0.3),i*160)); break;
+    case 'lose':  [392,330,262,196].forEach((f,i)=>setTimeout(()=>tone(f,0.55,'triangle',0.26),i*200)); break;
+  }
+}
+
+/* ==========================================================================
+   FLOW
+   ========================================================================== */
+const titleScreen=document.getElementById('titleScreen');
+const endScreen=document.getElementById('endScreen');
+const pauseScreen=document.getElementById('pauseScreen');
+const endTitle=document.getElementById('endTitle');
+const endText=document.getElementById('endText');
+const endKicker=document.getElementById('endKicker');
+const endStats=document.getElementById('endStats');
+let paused=false;
+
+function togglePause(){
+  if(!S.running||S.over) return;
+  paused=!paused;
+  pauseScreen.hidden=!paused;
+}
+document.getElementById('resumeBtn').addEventListener('click',()=>{paused=false;pauseScreen.hidden=true;});
+
+function fmt(t){
+  const m=Math.floor(t/60), s=Math.floor(t%60);
+  return m+'m '+(s<10?'0':'')+s+'s';
+}
+function endRun(won){
+  S.over=true; S.won=won; S.running=false;
+  paused=false; pauseScreen.hidden=true;
+  if(won){
+    endKicker.textContent='The Last Page';
+    endTitle.textContent='Found';
+    endText.textContent='He was thinner than the portrait and twice as stubborn. “I thought the garden was dead,” Colin said. Mary took his hand, and Dickon held the arch open, and the three of them walked out through hedges that had already begun to forget how to be cruel.';
+    sfx('win');
+    burst(S.colin.x,S.colin.y-30,60,['#e8a8ac','#f6dfe6','#e0b768','#c8d99a'],200);
+  } else {
+    endKicker.textContent='A Torn Page';
+    endTitle.textContent='The Hedges Closed';
+    endText.textContent='Mary went down in the green dark, and Dickon carried her back to the door in the wall. The garden keeps what it catches — but only until morning. She would find another way in. She always did.';
+    sfx('lose');
+  }
+  endStats.textContent = (won?'Reached the heart · ':'Lost the path · ')+
+    fmt(S.elapsed)+' · '+S.kills+' cleared · '+S.herbs+' herbs · '+S.potions+' cordials';
+  setTimeout(()=>{endScreen.hidden=false;}, won?1100:750);
+}
+function startRun(){
+  initAudio();
+  if(AC&&AC.state==='suspended') AC.resume();
+  buildWorld((Math.random()*1e9)|0);
+  lastHearts=-1;
+  titleScreen.hidden=true; endScreen.hidden=true; pauseScreen.hidden=true;
+  paused=false; S.running=true;
+  whisper('Ten years the door was locked. Now find the boy at the centre.');
+}
+document.getElementById('startBtn').addEventListener('click',startRun);
+document.getElementById('againBtn').addEventListener('click',startRun);
+
+/* ==========================================================================
+   LOOP
+   ========================================================================== */
+let last=performance.now(), mapAcc=0;
+function frame(now){
+  let dt=(now-last)/1000; last=now;
+  if(dt>0.05) dt=0.05;
+  if(!paused) update(dt);
+  render();
+  syncHUD();
+  mapAcc+=dt;
+  if(mapAcc>0.12){ mapAcc=0; drawMinimap(); }
+  requestAnimationFrame(frame);
+}
+
+/* ---- curtain up ---- */
+buildWorld(20240501);
+S.running=false;
+drawMinimap();
+requestAnimationFrame(frame);
+
+/* let the title screen show a living maze rather than a still */
+(function idleBreeze(){
+  const p=S.player;
+  let a=Math.random()*TAU;
+  setInterval(()=>{
+    if(S.running) return;
+    a+=0.6;
+    S.camX=p.x+Math.cos(a)*40; S.camY=p.y+Math.sin(a)*30;
+  },16);
+})();
+</script>
+</body>
+</html>
