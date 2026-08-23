@@ -64,8 +64,18 @@ canvas#game{position:absolute;inset:0;width:100%;height:100%;display:block}
 /* ---------- HUD ---------- */
 #hud{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 #vitals{top:14px;left:14px;transform:rotate(-.7deg);min-width:186px}
-#hearts{display:flex;gap:4px;margin-bottom:7px}
-#hearts svg{width:19px;height:19px;display:block;filter:drop-shadow(0 1px 0 rgba(120,90,70,.35))}
+.pips{display:flex;gap:4px;align-items:center}
+.pips svg{width:19px;height:19px;display:block;filter:drop-shadow(0 1px 0 rgba(120,90,70,.35))}
+.statRow{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.statRow .lab{font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--ink-soft);width:42px;flex:none}
+.satchel{display:flex;gap:14px;margin-top:9px;padding-top:8px;
+  border-top:1px solid rgba(122,106,85,.28)}
+.sat{display:flex;align-items:center;gap:5px;font-size:12px;letter-spacing:.03em;color:var(--ink)}
+.sat svg{width:16px;height:16px;display:block;flex:none}
+.sat b{font-weight:600;font-size:13px}
+.sat u{text-decoration:none;font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.sat.spent{opacity:.42}
 .meter{
   height:9px;border-radius:5px;background:#d8c7a3;
   box-shadow:inset 0 1px 2px rgba(90,74,52,.35);overflow:hidden;position:relative;
@@ -113,6 +123,7 @@ canvas#game{position:absolute;inset:0;width:100%;height:100%;display:block}
 /* ---------- hint ---------- */
 /* ---------- pill buttons ---------- */
 #hudBtns{position:absolute;right:16px;bottom:16px;display:flex;gap:8px;pointer-events:auto;z-index:4}
+.pill.off{opacity:.55}
 .pill{
   font-family:inherit;font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;
   padding:9px 15px;border:0;border-radius:2px;cursor:pointer;color:#4a3f33;
@@ -134,9 +145,9 @@ button.ghost:hover{color:#4a3f33;border-bottom-color:#4a3f33}
 button.ghost:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 
 /* ---------- instructions ---------- */
-.howto{margin:22px 0 0;text-align:left;display:grid;grid-template-columns:auto 1fr;gap:11px 16px;align-items:baseline}
+.howto{margin:20px 0 0;text-align:left;display:grid;grid-template-columns:auto 1fr;gap:9px 16px;align-items:baseline}
 .howto dt{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:#4a3f33;white-space:nowrap}
-.howto dd{margin:0;font-size:13.5px;line-height:1.52;color:#5b5040}
+.howto dd{margin:0;font-size:13px;line-height:1.45;color:#5b5040}
 .howto b{display:inline-block;background:#e5d5b1;border-radius:3px;padding:2px 7px;
   font-weight:600;color:#4a3f33;box-shadow:inset 0 -2px 0 rgba(120,100,70,.22)}
 .rule{height:1px;background:rgba(122,106,85,.32);margin:24px 0 0}
@@ -145,7 +156,7 @@ button.ghost:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 
 /* ---------- overlays ---------- */
 .overlay{
-  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:default;
   background:radial-gradient(ellipse at 50% 40%,rgba(52,64,48,.55),rgba(30,38,28,.86));
   backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
   padding:22px;text-align:center;z-index:5;
@@ -199,10 +210,14 @@ button.play:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
   box-shadow:inset 0 0 0 2px rgba(244,233,210,.34);
   display:flex;align-items:center;justify-content:center;
   font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:rgba(250,242,223,.86)}
-#tapRobin{position:absolute;right:38px;bottom:130px;width:56px;height:56px;border-radius:50%;
-  background:rgba(217,138,143,.28);box-shadow:inset 0 0 0 2px rgba(244,233,210,.3);
+#tapRobin,#tapPotion,#tapHerb{position:absolute;width:58px;height:58px;border-radius:50%;
+  box-shadow:inset 0 0 0 2px rgba(244,233,210,.3);
   display:flex;align-items:center;justify-content:center;
-  font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:rgba(250,242,223,.86)}
+  font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:rgba(250,242,223,.9)}
+#tapRobin{right:118px;bottom:40px;background:rgba(217,138,143,.3)}
+#tapPotion{right:26px;bottom:128px;background:rgba(181,100,108,.32)}
+#tapHerb{right:100px;bottom:150px;background:rgba(134,168,90,.32)}
+#tapPotion.spent,#tapHerb.spent{opacity:.35}
 
 @media (max-width:620px){
   #vitals{min-width:150px;padding:8px 10px}
@@ -225,15 +240,25 @@ button.play:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
   <div id="hud">
     <div class="card" id="vitals">
       <p class="eyebrow">Mary Lennox</p>
-      <div id="hearts"></div>
-      <div class="row"><span class="lab">Wand</span><div class="meter"><i id="manaFill"></i></div></div>
-      <div id="herbs">
-        <svg class="sprig" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 22V6" stroke="#5d7d46" stroke-width="2" fill="none"/>
-          <path d="M12 12c-5 0-7-3-7-6 3 0 7 2 7 6z" fill="#86a85a"/>
-          <path d="M12 16c5 0 7-3 7-6-3 0-7 2-7 6z" fill="#9dbf72"/>
-        </svg>
-        <span>Herbology <b id="herbCount">0</b></span>
+      <div class="statRow"><span class="lab">Health</span><div class="pips" id="hearts"></div></div>
+      <div class="statRow"><span class="lab">Magic</span><div class="pips" id="stars"></div></div>
+      <div class="satchel">
+        <div class="sat" id="satHerb">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 22V6" stroke="#5d7d46" stroke-width="2" fill="none"/>
+            <path d="M12 12c-5 0-7-3-7-6 3 0 7 2 7 6z" fill="#86a85a"/>
+            <path d="M12 16c5 0 7-3 7-6-3 0-7 2-7 6z" fill="#9dbf72"/>
+          </svg>
+          <b id="herbCount">0</b><u>Herbs&nbsp;H</u>
+        </div>
+        <div class="sat" id="satPotion">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M10 3h4v4l3 9a4 4 0 0 1-3.8 5h-2.4A4 4 0 0 1 7 16l3-9z" fill="#c8dae0" stroke="#8a5a4a" stroke-width="1.1" stroke-linejoin="round"/>
+            <path d="M7.6 14h8.8l.6 2a4 4 0 0 1-3.8 5h-2.4A4 4 0 0 1 7 16z" fill="#b5646c"/>
+            <path d="M9.5 2.4h5V4h-5z" fill="#7d5c3f"/>
+          </svg>
+          <b id="potionCount">0</b><u>Potions&nbsp;P</u>
+        </div>
       </div>
     </div>
 
@@ -246,6 +271,8 @@ button.play:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
     <div id="toasts"></div>
     <div id="hudBtns">
       <button class="pill" id="infoBtn">Info</button>
+      <button class="pill" id="soundBtn">Sound on</button>
+      <button class="pill" id="pauseBtn">Pause</button>
       <button class="pill" id="exitBtn">Exit</button>
     </div>
   </div>
@@ -253,8 +280,10 @@ button.play:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
   <div id="touch">
     <div id="stickBase"></div>
     <div id="stickNub"></div>
-    <div id="tapCast">Wand</div>
+    <div id="tapCast">Magic</div>
     <div id="tapRobin">Robin</div>
+    <div id="tapPotion">Potion</div>
+    <div id="tapHerb">Herbs</div>
   </div>
 
   <div id="vignette"></div>
@@ -296,28 +325,18 @@ button.play:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
     <div class="plate">
       <p class="kicker">How to play</p>
       <h1>Into the Maze<span class="sm">Mary, Dickon &amp; one wand</span></h1>
-      <p class="lede">Find Colin at the heart of the maze. The hedges move, the flora bites, and the robin knows the way in.</p>
+      <p class="lede">Find Colin. He is hidden somewhere new each time, and the hedges move.</p>
       <dl class="howto">
-        <dt><b>W A S D</b></dt><dd>Walk. Mary leads; Dickon follows and casts on his own.</dd>
-        <dt><b>Arrows</b></dt><dd>Walk — or, once you start steering with WASD, aim and fire the wand in that direction.</dd>
-        <dt><b>Mouse</b></dt><dd>Point to aim. Click, or hold <b>Space</b>, to cast.</dd>
-        <dt>Auto&#8209;aim</dt><dd>With no mouse or arrows, the wand locks onto the nearest threat ahead of you. A gold ring marks it.</dd>
-        <dt><b>R</b></dt><dd>Send the robin. It flies the true path toward the heart and maps what it passes.</dd>
-        <dt><b>P</b> &middot; <b>I</b></dt><dd>Pause, and open this page.</dd>
-      </dl>
-      <div class="rule"></div>
-      <dl class="howto">
-        <dt>Cordials</dt><dd>Restore health.</dd>
-        <dt>Herbology</dt><dd>Deepens the wand and raises your reserve.</dd>
-        <dt>Living hedges</dt><dd>Sink and rise on their own. A gold shimmer means one is closing — it can never seal your only route.</dd>
-        <dt>The wind</dt><dd>Comes up off the moor now and then and shoves everyone a few steps. It costs you nothing but your footing.</dd>
-      </dl>
-      <div class="rule"></div>
-      <dl class="howto">
-        <dt>On a phone</dt><dd>Drag the left half of the screen to walk. Tap the right-hand buttons to cast and to send the robin.</dd>
+        <dt><b>W A S D</b></dt><dd>Walk. Dickon follows you and handles the crows.</dd>
+        <dt><b>Space</b> / click</dt><dd>Magic. It finds the nearest creature by itself — arrow keys aim it manually.</dd>
+        <dt><b>P</b></dt><dd>Drink a potion. Health back to full.</dd>
+        <dt><b>H</b></dt><dd>Crush herbs. Magic back to full.</dd>
+        <dt><b>R</b></dt><dd>Send the robin. It is a liar twice over — the third flight is the true path.</dd>
+        <dt><b>Esc</b> &middot; <b>I</b></dt><dd>Pause, and open this page.</dd>
+        <dt>On a phone</dt><dd>Drag the left half to walk; the right-hand buttons do the rest.</dd>
       </dl>
       <button class="play" id="infoBackBtn">Back</button>
-      <p class="sig">Copyright 2026 Trent Sellars<br>Quotations from <i>The Secret Garden</i> by Frances Hodgson Burnett, 1911 — public domain</p>
+      <p class="sig">Copyright 2026 Trent Sellars</p>
     </div>
   </div>
 </div>
@@ -586,7 +605,8 @@ const STONES=[]; for(let i=0;i<4;i++) STONES.push(makeStone(5500+i*61));
 /* ==========================================================================
    THE MAZE
    ========================================================================== */
-const CX=(COLS-1)>>1, CY=(ROWS-1)>>1;   // heart of the garden
+let CX=(COLS-1)>>1, CY=(ROWS-1)>>1;   // heart of the garden — placed afresh each run
+let START=[1,1];
 const idx=(x,y)=>y*COLS+x;
 
 const G = {
@@ -607,6 +627,10 @@ function cellSolid(x,y){
 function worldSolid(wx,wy){ return cellSolid(Math.floor(wx/TILE), Math.floor(wy/TILE)); }
 
 function generateMaze(rnd){
+  /* Colin hides somewhere new each time. Odd coordinates only, and far enough
+     from every edge that the walled garden still fits inside the maze. */
+  CX = 13 + 2*((rnd()*10)|0);
+  CY = 13 + 2*((rnd()*10)|0);
   const g=G.grid; g.fill(1);
   const stack=[[1,1]]; g[idx(1,1)]=0;
   const dirs=[[0,-2],[2,0],[0,2],[-2,0]];
@@ -659,6 +683,13 @@ function generateMaze(rnd){
 
   G.open.length=0;
   for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++) if(g[idx(x,y)]===0) G.open.push([x,y]);
+
+  /* start from whichever corner is furthest from wherever he ended up */
+  let bd=-1;
+  for(const c of [[1,1],[COLS-2,1],[1,ROWS-2],[COLS-2,ROWS-2]]){
+    const d=Math.abs(c[0]-CX)+Math.abs(c[1]-CY);
+    if(d>bd){ bd=d; START=c; }
+  }
 }
 
 /* breadth-first flood from the heart: powers the robin and the compass */
@@ -699,8 +730,9 @@ const S = {
   player:null, buddy:null,
   enemies:[], shots:[], pickups:[], parts:[], petals:[], birds:[], floats:[],
   flowers:[], trees:[], stones:[],
-  robin:null, robinCd:0, whisperT:0, whisperIdx:0,
-  herbs:0, kills:0, potions:0, hurtCool:0, camX:0, camY:0,
+  robin:null, robinCd:0, robinStreak:0, whisperT:0, whisperIdx:0,
+  herbs:0, potions:0, power:0, potionsUsed:0, herbsUsed:0,
+  kills:0, hurtCool:0, camX:0, camY:0, chirpT:3,
   aimTarget:null, flash:0, fade:0, fadeTo:0, gusts:[],
   wind:{active:false,dir:0,power:0,t:0,dur:0,next:26}
 };
@@ -714,13 +746,14 @@ function buildWorld(seed){
   S.enemies.length=0; S.shots.length=0; S.pickups.length=0;
   S.parts.length=0; S.petals.length=0; S.birds.length=0; S.floats.length=0;
   S.flowers.length=0; S.trees.length=0; S.stones.length=0;
-  S.herbs=0; S.kills=0; S.potions=0; S.elapsed=0; S.robin=null; S.robinCd=0;
+  S.herbs=0; S.potions=0; S.power=0; S.potionsUsed=0; S.herbsUsed=0;
+  S.kills=0; S.elapsed=0; S.robin=null; S.robinCd=0; S.robinStreak=0;
   S.whisperT=2.2; S.whisperIdx=0; S.over=false; S.won=false;
   S.aimTarget=null; S.flash=0; S.fade=0; S.fadeTo=0; S.gusts.length=0;
   S.wind.active=false; S.wind.power=0; S.wind.t=0; S.wind.next=26+Math.random()*26;
 
   /* ---- Mary and Dickon start at the far corner ---- */
-  const sx=1.5*TILE, sy=1.5*TILE;
+  const sx=(START[0]+0.5)*TILE, sy=(START[1]+0.5)*TILE;
   S.player={x:sx,y:sy,vx:0,vy:0,r:15,hp:100,max:100,mana:100,manaMax:100,
     face:1,walk:0,cast:0,invuln:0,aim:0,manaHold:0,fx:1,fy:0};
   S.buddy={x:sx-26,y:sy+16,r:14,face:1,walk:0,cast:0,cool:1.2,trail:[]};
@@ -754,7 +787,7 @@ function buildWorld(seed){
   /* ---- the garden's unwelcome tenants ---- */
   const spots=G.open.filter(([x,y])=>{
     const d=G.dist[idx(x,y)];
-    const fromStart=Math.abs(x-1)+Math.abs(y-1);
+    const fromStart=Math.abs(x-START[0])+Math.abs(y-START[1]);
     const inHeart=Math.abs(x-CX)<=5&&Math.abs(y-CY)<=5;
     return d>=0 && fromStart>9 && !inHeart;
   });
@@ -837,7 +870,8 @@ addEventListener('keydown',e=>{
   if('wasd'.includes(k)&&k.length===1) usedWASD=true;
   if(e.key===' ') firing=true;
   if(k==='r') sendRobin();
-  if(k==='p') togglePause();
+  if(k==='p') usePotion();
+  if(k==='h') useHerb();
   if(k==='i') toggleInfo();
   if(e.key==='Escape'){ if(!infoScreen.hidden) toggleInfo(); else if(S.running) togglePause(); }
 });
@@ -868,9 +902,8 @@ touchEl.addEventListener('touchstart',e=>{
       stickBase.style.left=p.x+'px';stickBase.style.top=p.y+'px';
       stickNub.style.left=p.x+'px';stickNub.style.top=p.y+'px';
       stickBase.classList.add('on');stickNub.classList.add('on');
-    } else if(p.y < VH-190 || p.x > VW*0.55){
-      if(p.y>VH-200 && p.x>VW-110 && p.y<VH-110) sendRobin();
-      else firing=true;
+    } else {
+      firing=true;
     }
   }
   e.preventDefault();
@@ -899,6 +932,16 @@ function endTouch(e){
 }
 touchEl.addEventListener('touchend',endTouch);
 touchEl.addEventListener('touchcancel',endTouch);
+/* the round buttons handle themselves so the cast zone never steals their tap */
+function tapButton(id,fn){
+  const el=document.getElementById(id);
+  const go=e=>{ e.preventDefault(); e.stopPropagation(); fn(); };
+  el.addEventListener('touchstart',go,{passive:false});
+  el.addEventListener('click',e=>{e.stopPropagation();fn();});
+}
+tapButton('tapRobin',()=>sendRobin());
+tapButton('tapPotion',()=>usePotion());
+tapButton('tapHerb',()=>useHerb());
 
 /* ==========================================================================
    MOVEMENT & COLLISION
@@ -944,16 +987,14 @@ function nearestEnemy(x,y,range){
     const d=dist2(x,y,e.x,e.y); if(d<bd){bd=d;best=e;} }
   return best;
 }
-/* the wand prefers whatever is in front of you, not merely whatever is closest */
+/* the magic finds the nearest creature on its own, whichever way Mary faces */
 function autoTarget(p,range){
   let best=null, bs=1e18;
   for(const e of S.enemies){
     if(e.dead) continue;
-    const dx=e.x-p.x, dy=(e.y-p.y)*0.85, d=Math.hypot(dx,dy);
-    if(d>range) continue;
-    const cos=(dx*p.fx+dy*p.fy)/(d||1);
-    const score=d*(1+0.85*(1-cos));   // straight ahead counts as nearer
-    if(score<bs){ bs=score; best=e; }
+    const dx=e.x-p.x, dy=(e.y-p.y)*0.9, d=dx*dx+dy*dy;
+    if(d>range*range) continue;
+    if(d<bs){ bs=d; best=e; }
   }
   return best;
 }
@@ -961,37 +1002,69 @@ function castSpell(forced){
   const p=S.player;
   if(p.cast>0 || p.mana<12) { if(p.mana<12 && p.cast<=0){p.cast=.16; sfx('empty');} return; }
   let a;
-  if(forced!==undefined) a=forced;
+  const t=S.aimTarget;
+  if(forced!==undefined) a=forced;                       // arrow keys always win
+  else if(t) a=Math.atan2(t.y-p.y,t.x-p.x);              // otherwise: nearest creature
   else if(mouseAim && !stick.active && !touchMode){
     const w=screenToWorld(mouseX,mouseY); a=Math.atan2(w.y-p.y,w.x-p.x);
-  } else {
-    const t=S.aimTarget;
-    a = t ? Math.atan2(t.y-p.y,t.x-p.x) : Math.atan2(p.fy,p.fx);
-  }
+  } else a=Math.atan2(p.fy,p.fx);
   p.mana-=12; p.cast=0.22; p.manaHold=0.55; p.aim=a;
   if(Math.abs(Math.cos(a))>0.2) p.face=Math.cos(a)>0?1:-1;
-  const dmg=17+S.herbs*5;
+  const dmg=17+S.power*5;
   S.shots.push({x:p.x+Math.cos(a)*16,y:p.y+Math.sin(a)*16,
     vx:Math.cos(a)*540,vy:Math.sin(a)*540,life:.95,dmg,friendly:true,r:8,t:0,hue:'#f4e3a8'});
   burst(p.x+Math.cos(a)*18,p.y+Math.sin(a)*18,4,['#f6e6b4','#fff6dd'],40);
   sfx('cast');
 }
-function buddyCast(target){
+/* P — a potion puts Mary right back on her feet */
+function usePotion(){
+  const p=S.player;
+  if(!S.running||paused||S.over) return;
+  if(S.potions<=0){ toast('No potions left.'); sfx('empty'); return; }
+  if(p.hp>=p.max){ toast('Nothing to mend just yet.'); return; }
+  S.potions--; S.potionsUsed++;
+  p.hp=p.max; p.invuln=Math.max(p.invuln,0.5);
+  floatText(p.x,p.y-40,'Restored','#e8a8ac');
+  burst(p.x,p.y-16,20,['#e8a8ac','#f6dfe6','#d98a8f','#fbf1dc'],110);
+  toast('The potion goes down warm. Health full.','rose');
+  sfx('heal');
+}
+/* H — crushed herbs fill the wand back to the brim */
+function useHerb(){
+  const p=S.player;
+  if(!S.running||paused||S.over) return;
+  if(S.herbs<=0){ toast('No herbs left.'); sfx('empty'); return; }
+  if(p.mana>=p.manaMax){ toast('Your magic is already full.'); return; }
+  S.herbs--; S.herbsUsed++;
+  p.mana=p.manaMax; p.manaHold=0;
+  floatText(p.x,p.y-40,'Magic full','#9dbf72');
+  burst(p.x,p.y-16,20,['#9dbf72','#c8d99a','#e0b768','#f6efdd'],110);
+  toast('Crushed green, and the wand hums again.','gold');
+  sfx('herb');
+}
+function buddyCast(target,felling){
   const b=S.buddy;
   const a=Math.atan2(target.y-b.y,target.x-b.x);
   b.cast=.3; b.face=Math.cos(a)>0?1:-1;
   S.shots.push({x:b.x+Math.cos(a)*14,y:b.y+Math.sin(a)*14,
-    vx:Math.cos(a)*470,vy:Math.sin(a)*470,life:.9,dmg:11+S.herbs*2,friendly:true,r:7,t:0,hue:'#bfe0c9'});
+    vx:Math.cos(a)*(felling?620:470),vy:Math.sin(a)*(felling?620:470),
+    life:felling?1.3:.9, dmg:felling?9999:1, friendly:true, r:felling?11:7, t:0,
+    fly:!!felling, hue:felling?'#d8e8c4':'#bfe0c9'});
   sfx('cast2');
 }
-function sendRobin(){
-  if(!S.running||S.robinCd>0||S.robin) return;
-  const p=S.player;
-  let cx=Math.floor(p.x/TILE), cy=Math.floor(p.y/TILE);
-  if(G.dist[idx(cx,cy)]<0) return;
+function nearestRook(x,y,range){
+  let best=null,bd=range*range;
+  for(const e of S.enemies){
+    if(e.dead||e.kind!=='rook') continue;
+    const d=dist2(x,y,e.x,e.y); if(d<bd){bd=d;best=e;}
+  }
+  return best;
+}
+/* the honest flight: straight down the flow field to the heart */
+function truePath(cx,cy){
   const path=[[cx,cy]];
   for(let step=0;step<46;step++){
-    let d=G.dist[idx(cx,cy)];
+    const d=G.dist[idx(cx,cy)];
     if(d<=0) break;
     let nx=cx,ny=cy,nd=d;
     for(const [ax,ay] of [[cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]]){
@@ -1002,9 +1075,62 @@ function sendRobin(){
     if(nx===cx&&ny===cy) break;
     cx=nx;cy=ny;path.push([cx,cy]);
   }
-  S.robin={path,i:0,x:p.x,y:p.y,z:60,t:0,life:path.length*0.085+0.6};
-  S.robinCd=15;
-  whisper('The robin knows the way in. It always did.');
+  return path;
+}
+/* the dishonest flight: a plausible wander that drifts the wrong way */
+function falsePath(cx,cy){
+  const path=[[cx,cy]];
+  let px=-1,py=-1;
+  for(let step=0;step<30;step++){
+    const opts=[];
+    for(const [ax,ay] of [[cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]]){
+      if(ax<0||ay<0||ax>=COLS||ay>=ROWS) continue;
+      if(G.grid[idx(ax,ay)]!==0) continue;
+      if(ax===px&&ay===py) continue;
+      const dd=G.dist[idx(ax,ay)];
+      // weight the wrong way: cells further from the heart look tempting
+      opts.push([ax,ay, dd>G.dist[idx(cx,cy)] ? 4 : 1]);
+    }
+    if(!opts.length) break;
+    let tot=0; for(const o of opts) tot+=o[2];
+    let r=Math.random()*tot, chosen=opts[0];
+    for(const o of opts){ r-=o[2]; if(r<=0){ chosen=o; break; } }
+    px=cx; py=cy; cx=chosen[0]; cy=chosen[1];
+    path.push([cx,cy]);
+  }
+  return path;
+}
+function sendRobin(){
+  if(!S.running||paused||S.over||S.robin) return;
+  if(S.robinCd>0){
+    toast('The robin is still catching its breath.');
+    return;
+  }
+  const p=S.player;
+  const cx=Math.floor(p.x/TILE), cy=Math.floor(p.y/TILE);
+  if(G.dist[idx(cx,cy)]<0) return;
+
+  /* now and then he simply will not come */
+  if(Math.random()<0.18){
+    S.robinCd=7;
+    whisper('The robin will not come. There is a worm, and it is more interesting.');
+    toast('The robin is busy.');
+    return;
+  }
+
+  S.robinStreak++;
+  const honest = S.robinStreak>=3;
+  const path = honest ? truePath(cx,cy) : falsePath(cx,cy);
+  S.robin={path,i:0,x:p.x,y:p.y,z:60,t:0,life:path.length*0.085+0.6,honest};
+  if(honest){
+    S.robinStreak=0; S.robinCd=22;
+    whisper('This time he means it. The robin knows the way in.');
+    toast('The robin flies true.','gold');
+  } else {
+    S.robinCd=11;
+    whisper('He dithers, doubles back, and darts off entirely the wrong way.');
+    toast('The robin is teasing you. Ask again.','rose');
+  }
   sfx('robin');
 }
 
@@ -1161,7 +1287,7 @@ function update(dt){
   p.invuln=Math.max(0,p.invuln-dt);
   p.manaHold=Math.max(0,p.manaHold-dt);
   if(p.manaHold<=0) p.mana=Math.min(p.manaMax,p.mana+16*dt);
-  S.aimTarget = autoTarget(p,520);
+  S.aimTarget = autoTarget(p,560);
   if(wandKeys) castSpell(Math.atan2(wandKeys.y,wandKeys.x));
   else if(firing) castSpell();
 
@@ -1181,8 +1307,15 @@ function update(dt){
   b.cast=Math.max(0,b.cast-dt);
   b.cool-=dt;
   if(b.cool<=0){
-    const t=nearestEnemy(b.x,b.y,370);
-    if(t){ buddyCast(t); b.cool=1.35; } else b.cool=0.25;
+    /* Dickon takes the rooks off you — but only while he is still at your
+       shoulder. Lose him behind a hedge that shut, and the crows are yours. */
+    const withYou = dist2(b.x,b.y,p.x,p.y) < 300*300;
+    const rook = withYou ? nearestRook(b.x,b.y,480) : null;
+    if(rook){ buddyCast(rook,true); b.cool=0.85; }
+    else {
+      const t=nearestEnemy(b.x,b.y,360);
+      if(t){ buddyCast(t,false); b.cool=1.2; } else b.cool=0.25;
+    }
   }
 
   /* ---- unwelcome things ---- */
@@ -1249,7 +1382,7 @@ function update(dt){
     const s=S.shots[i];
     s.t+=dt; s.life-=dt;
     s.x+=s.vx*dt; s.y+=s.vy*dt;
-    let gone = s.life<=0 || worldSolid(s.x,s.y);
+    let gone = s.life<=0 || (!s.fly && worldSolid(s.x,s.y));
     if(!gone && s.friendly){
       for(const e of S.enemies){
         if(e.dead) continue;
@@ -1263,7 +1396,7 @@ function update(dt){
       if(dist2(s.x,s.y,p.x,p.y) < (p.r+s.r)*(p.r+s.r)){ hurtPlayer(s.dmg); gone=true; }
     }
     if(gone){
-      if(s.life<=0||worldSolid(s.x,s.y)) burst(s.x,s.y,4,[s.hue],40);
+      if(s.life<=0||(!s.fly&&worldSolid(s.x,s.y))) burst(s.x,s.y,4,[s.hue],40);
       S.shots.splice(i,1);
     }
   }
@@ -1275,17 +1408,17 @@ function update(dt){
     if(dist2(u.x,u.y,p.x,p.y)<34*34){
       u.got=true;
       if(u.kind==='potion'){
-        p.hp=Math.min(p.max,p.hp+38); S.potions++;
-        floatText(u.x,u.y-24,'+38','#e8a8ac');
+        S.potions++;
+        floatText(u.x,u.y-24,'Potion','#e8a8ac');
         burst(u.x,u.y-8,12,['#e8a8ac','#f6dfe6','#d98a8f'],90);
-        toast('A cordial, still warm. Health restored.','rose');
+        toast('A potion, stoppered and safe. Press P to drink it.','rose');
       } else {
-        S.herbs++; p.manaMax+=14; p.mana=p.manaMax;
-        floatText(u.x,u.y-24,'Herbology','#9dbf72');
+        S.herbs++; S.power++; p.manaMax+=10;
+        floatText(u.x,u.y-24,'Herbs','#9dbf72');
         burst(u.x,u.y-8,12,['#9dbf72','#e0b768','#c8d99a'],90);
-        toast('Herbology: your wand bites deeper.','gold');
+        toast('Herbology: your magic bites deeper. Press H to crush them.','gold');
       }
-      sfx(u.kind==='potion'?'heal':'herb');
+      sfx(u.kind==='potion'?'pickup':'herb');
     }
   }
 
@@ -1305,7 +1438,7 @@ function update(dt){
     const nxt=r.path[Math.min(seg+1,r.path.length-1)];
     const tx=nxt[0]*TILE+TILE/2, ty=nxt[1]*TILE+TILE/2;
     r.x=lerp(r.x,tx,Math.min(1,dt*9)); r.y=lerp(r.y,ty,Math.min(1,dt*9));
-    G.seen[idx(nxt[0],nxt[1])]=1;
+    if(r.honest) G.seen[idx(nxt[0],nxt[1])]=1;
     if(Math.random()<.5) S.parts.push({x:r.x,y:r.y,vx:(Math.random()-.5)*12,vy:8,vz:-8,z:52,
       life:1.4,t:0,rot:Math.random()*TAU,rv:2,s:2.6,col:'#f6dfe6'});
     if(r.t>r.life){ S.robin=null; }
@@ -1482,7 +1615,6 @@ function render(){
 function drawReticle(){
   const t=S.aimTarget;
   if(!t||t.dead||!S.running) return;
-  if(mouseAim && !touchMode && !stick.active) return;
   const sx=SX(t.x), sy=SY(t.y)-(t.fly?46:12);
   const r=t.r+11+Math.sin(S.t*4)*1.6;
   ctx.save();
@@ -1928,33 +2060,64 @@ function drawFloats(){
    HUD
    ========================================================================== */
 const heartsEl=document.getElementById('hearts');
-const manaEl=document.getElementById('manaFill');
+const starsEl=document.getElementById('stars');
 const herbEl=document.getElementById('herbCount');
+const potionEl=document.getElementById('potionCount');
+const satHerb=document.getElementById('satHerb');
+const satPotion=document.getElementById('satPotion');
+const tapPotionEl=document.getElementById('tapPotion');
+const tapHerbEl=document.getElementById('tapHerb');
 const mm=document.getElementById('minimap'), mmx=mm.getContext('2d');
 const mapLabel=document.getElementById('mapLabel');
 let lastHearts=-1;
 
-function heartSVG(fill){
-  const c = fill>=1?'#d05b64' : fill>0 ? '#d05b64' : '#cbb894';
-  const clip = fill>=1?100 : Math.round(fill*100);
+const HEART_D='M12 21S3.5 14.6 3.5 9.1A4.6 4.6 0 0 1 12 6.4 4.6 4.6 0 0 1 20.5 9.1C20.5 14.6 12 21 12 21z';
+const STAR_D ='M12 2.6l2.75 6.02 6.55.72-4.88 4.42 1.34 6.46L12 16.9l-5.76 3.32 1.34-6.46L2.7 9.34l6.55-.72z';
+/* one pip drawing, two shapes: hearts for health, stars for magic */
+function pipSVG(kind,i,fill){
+  const on   = kind==='heart' ? '#d05b64' : '#e0b768';
+  const edge = kind==='heart' ? '#8a5a4a' : '#9c7a3e';
+  const off  = '#cbb894';
+  const gid  = kind+'-'+i;
+  const stop = Math.round(clamp(fill,0,1)*100);
   return '<svg viewBox="0 0 24 24" aria-hidden="true">'+
-    '<defs><linearGradient id="g'+clip+'"><stop offset="'+clip+'%" stop-color="'+c+'"/>'+
-    '<stop offset="'+clip+'%" stop-color="#cbb894"/></linearGradient></defs>'+
-    '<path d="M12 21S3.5 14.6 3.5 9.1A4.6 4.6 0 0 1 12 6.4 4.6 4.6 0 0 1 20.5 9.1C20.5 14.6 12 21 12 21z" '+
-    'fill="url(#g'+clip+')" stroke="#8a5a4a" stroke-width="1.1" stroke-linejoin="round"/></svg>';
+    '<defs><linearGradient id="'+gid+'">'+
+    '<stop offset="'+stop+'%" stop-color="'+on+'"/>'+
+    '<stop offset="'+stop+'%" stop-color="'+off+'"/></linearGradient></defs>'+
+    '<path d="'+(kind==='heart'?HEART_D:STAR_D)+'" fill="url(#'+gid+')" '+
+    'stroke="'+edge+'" stroke-width="1.1" stroke-linejoin="round"/></svg>';
 }
+let lastStars=-1, lastHerbs=-1, lastPotions=-1;
 function syncHUD(){
   const p=S.player; if(!p) return;
-  const h=Math.ceil(p.hp/20*4)/4;
+  const h=Math.round(p.hp/p.max*20);
   if(h!==lastHearts){
     lastHearts=h;
     let html='';
-    for(let i=0;i<5;i++) html+=heartSVG(clamp(p.hp/20-i,0,1));
+    for(let i=0;i<5;i++) html+=pipSVG('heart',i,p.hp/p.max*5-i);
     heartsEl.innerHTML=html;
   }
-  manaEl.style.width=(p.mana/p.manaMax*100).toFixed(1)+'%';
-  herbEl.textContent=S.herbs;
-  mapLabel.textContent = S.robinCd>0 ? 'Robin rests · '+Math.ceil(S.robinCd)+'s' : 'Press R — send the robin';
+  const mg=Math.round(p.mana/p.manaMax*20);
+  if(mg!==lastStars){
+    lastStars=mg;
+    let html='';
+    for(let i=0;i<5;i++) html+=pipSVG('star',i,p.mana/p.manaMax*5-i);
+    starsEl.innerHTML=html;
+  }
+  if(S.herbs!==lastHerbs){
+    lastHerbs=S.herbs;
+    herbEl.textContent=S.herbs;
+    satHerb.classList.toggle('spent',S.herbs===0);
+    tapHerbEl.classList.toggle('spent',S.herbs===0);
+  }
+  if(S.potions!==lastPotions){
+    lastPotions=S.potions;
+    potionEl.textContent=S.potions;
+    satPotion.classList.toggle('spent',S.potions===0);
+    tapPotionEl.classList.toggle('spent',S.potions===0);
+  }
+  mapLabel.textContent = S.robinCd>0 ? 'Robin resting · '+Math.ceil(S.robinCd)+'s'
+                                     : 'Press R — send the robin';
 }
 function drawMinimap(){
   const s=mm.width/COLS;
@@ -1965,10 +2128,12 @@ function drawMinimap(){
     mmx.fillStyle=solid?'#87a35f':'#f6efdd';
     mmx.fillRect(x*s,y*s,s+0.6,s+0.6);
   }
-  // the heart, always faintly known
-  mmx.globalAlpha=.9; mmx.fillStyle=P.roseDk;
-  mmx.beginPath(); mmx.arc(CX*s+s/2,CY*s+s/2,s*1.5,0,TAU); mmx.fill();
-  mmx.globalAlpha=1;
+  // the heart is only marked once you have actually found it
+  if(G.seen[idx(CX,CY)]){
+    mmx.globalAlpha=.9; mmx.fillStyle=P.roseDk;
+    mmx.beginPath(); mmx.arc(CX*s+s/2,CY*s+s/2,s*1.5,0,TAU); mmx.fill();
+    mmx.globalAlpha=1;
+  }
   for(const u of S.pickups){
     if(u.got) continue;
     const cx=Math.floor(u.x/TILE), cy=Math.floor(u.y/TILE);
@@ -2040,7 +2205,7 @@ function toast(txt,cls){
   toastsEl.appendChild(el);
   setTimeout(()=>{el.style.transition='opacity .4s';el.style.opacity='0';},2400);
   setTimeout(()=>el.remove(),2900);
-  while(toastsEl.children.length>3) toastsEl.firstChild.remove();
+  while(toastsEl.children.length>3) toastsEl.firstElementChild.remove();
 }
 
 /* ==========================================================================
@@ -2085,9 +2250,58 @@ function windNoise(dur){
   src.connect(f); f.connect(g); g.connect(master);
   src.start(); src.stop(now+dur+0.05);
 }
+/* ---------------------------------------------------------- the soundscape
+   A breeze bed, a slow swell, and birds that sing at their own pace. All of
+   it synthesised — there is not a single audio file in this project.        */
+let amb=null;
+function startAmbience(){
+  if(!AC||amb) return;
+  const len=Math.floor(AC.sampleRate*4);
+  const buf=AC.createBuffer(2,len,AC.sampleRate);
+  for(let ch=0;ch<2;ch++){
+    const d=buf.getChannelData(ch); let v=0;
+    for(let i=0;i<len;i++){ v=v*0.965+(Math.random()*2-1)*0.035; d[i]=v*2.6; }
+    // taper the seam so the loop doesn't click
+    for(let i=0;i<800;i++){ const f=i/800; d[i]*=f; d[len-1-i]*=f; }
+  }
+  const src=AC.createBufferSource(); src.buffer=buf; src.loop=true;
+  const lp=AC.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=560; lp.Q.value=0.4;
+  const g=AC.createGain(); g.gain.value=0.30;
+  const swell=AC.createOscillator(); swell.frequency.value=0.055;
+  const swellG=AC.createGain(); swellG.gain.value=0.16;
+  swell.connect(swellG); swellG.connect(g.gain);
+  src.connect(lp); lp.connect(g); g.connect(master);
+  // a very quiet held chord under it all, like warm afternoon
+  const pad=AC.createGain(); pad.gain.value=0.028; pad.connect(master);
+  const oscs=[130.81,196.00,261.63].map((f,i)=>{
+    const o=AC.createOscillator(); o.type='sine'; o.frequency.value=f;
+    o.detune.value=(i-1)*6;
+    const og=AC.createGain(); og.gain.value=0.33;
+    o.connect(og); og.connect(pad); o.start(); return o;
+  });
+  src.start(); swell.start();
+  amb={src,swell,oscs,pad,g};
+}
+function birdsong(){
+  if(!AC||muted) return;
+  const notes=2+((Math.random()*3)|0);
+  const base=1500+Math.random()*900;
+  for(let i=0;i<notes;i++){
+    const f=base*(1+(Math.random()-0.4)*0.35);
+    setTimeout(()=>tone(f,0.07+Math.random()*0.06,'sine',0.09,f*(1+(Math.random()-0.5)*0.5)),
+      i*(60+Math.random()*90));
+  }
+}
+function setMuted(m){
+  muted=m;
+  if(master) master.gain.value = m ? 0 : 0.16;
+  const b=document.getElementById('soundBtn');
+  if(b){ b.textContent = m ? 'Sound off' : 'Sound on'; b.classList.toggle('off',m); }
+}
 function sfx(name,arg){
   switch(name){
     case 'wind': windNoise(arg||4); return;
+    case 'pickup': tone(880,0.1,'sine',0.22,1180); setTimeout(()=>tone(1320,0.16,'sine',0.16,1560),70); break;
     case 'cast':  tone(760,0.16,'triangle',0.35,1180); break;
     case 'cast2': tone(560,0.16,'triangle',0.24,880); break;
     case 'hit':   tone(220,0.09,'square',0.16,150); break;
@@ -2144,6 +2358,15 @@ function toTitle(){
   titleScreen.hidden=false;
 }
 document.getElementById('resumeBtn').addEventListener('click',()=>{paused=false;pauseScreen.hidden=true;});
+document.getElementById('pauseBtn').addEventListener('click',togglePause);
+document.getElementById('soundBtn').addEventListener('click',()=>{
+  initAudio();
+  if(AC&&AC.state==='suspended') AC.resume();
+  setMuted(!muted);
+  if(!muted) startAmbience();
+});
+/* clicking the paper behind the plate closes the page */
+infoScreen.addEventListener('click',e=>{ if(e.target===infoScreen) toggleInfo(); });
 document.getElementById('infoBtn').addEventListener('click',toggleInfo);
 document.getElementById('titleInfoBtn').addEventListener('click',toggleInfo);
 document.getElementById('infoBackBtn').addEventListener('click',toggleInfo);
@@ -2172,14 +2395,16 @@ function endRun(won){
     sfx('lose');
   }
   endStats.textContent = (won?'Reached the heart · ':'Lost the path · ')+
-    fmt(S.elapsed)+' · '+S.kills+' cleared · '+S.herbs+' herbs · '+S.potions+' cordials';
+    fmt(S.elapsed)+' · '+S.kills+' cleared · '+S.potionsUsed+' potions · '+S.herbsUsed+' herbs';
   setTimeout(()=>{endScreen.hidden=false;}, won?1100:750);
 }
 function startRun(){
   initAudio();
   if(AC&&AC.state==='suspended') AC.resume();
+  if(!muted) startAmbience();
   buildWorld((Math.random()*1e9)|0);
-  lastHearts=-1; usedWASD=false; firing=false;
+  lastHearts=-1; lastStars=-1; lastHerbs=-1; lastPotions=-1;
+  usedWASD=false; firing=false;
   S.fade=0; S.fadeTo=0; S.flash=0;
   titleScreen.hidden=true; endScreen.hidden=true; pauseScreen.hidden=true; infoScreen.hidden=true;
   paused=false; S.running=true;
@@ -2200,6 +2425,8 @@ function frame(now){
   syncHUD();
   mapAcc+=dt;
   if(mapAcc>0.12){ mapAcc=0; drawMinimap(); }
+  S.chirpT-=dt;
+  if(S.chirpT<=0){ birdsong(); S.chirpT=3+Math.random()*7; }
   requestAnimationFrame(frame);
 }
 
